@@ -377,8 +377,8 @@ def runProcess():
 
     #-----Create Files from Masks and Original MRI slices
     
-    foldernames = ['mmasks/mask_alpha_','mmasks/mask_beta_','mmasks/mask_ddc_','mmasks/mask_diff_','mmasks/mask_perf_','mmasks/mask_f_']
-    adict, bdict, ddict, diff_dict, perf_dict, f_dict = createFiles(foldernames)
+    filenames = ['mmasks/mask_alpha_','mmasks/mask_beta_','mmasks/mask_ddc_','mmasks/mask_diff_','mmasks/mask_perf_','mmasks/mask_f_']
+    adict, bdict, ddict, diff_dict, perf_dict, f_dict = createFiles(filenames)
     print ("created Files")
 
     #saved Masked Files
@@ -427,7 +427,7 @@ def runProcess():
     savewithPatient(file_path, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
     print("Finished saving files")
 
-
+'''
 #load files, names of the padded files:
 name = ['apad', 'bpad', 'dpad', 'diffpad', 'perfpad', 'fpad']
 #where are files located:
@@ -443,3 +443,4 @@ ldiff_files, lperf_files, lf_files = MaxMinNorm(ldiff_files, lperf_files, lf_fil
 filepath = 'maxmin'
 name = ['mm_apad', 'mm_bpad', 'mm_dpad', 'mm_diffpad', 'mm_perfpad', 'mm_fpad']
 savewithPatient(filepath, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
+'''
