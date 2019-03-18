@@ -90,7 +90,7 @@ def var_(val, freq):
     dev = freq * (val - avg) ** 2
     return dev.sum() / (freq.sum() - 1)
 
-def kurt_(val,freq):
+def kurt_(name,val,freq):
     with warnings.catch_warnings():
         warnings.filterwarnings('error')
         try:
@@ -101,10 +101,13 @@ def kurt_(val,freq):
         except Warning as e:
             print ("Kurt warning: ", e)
             undef = -10
+            print ("name: ", name)
+            #temp = "Kurt " + name
+            #viz.bar(X=val,Y=freq,opts=dict(title=temp))
             return undef
     
 
-def skew_(val,freq):
+def skew_(name, val,freq):
     with warnings.catch_warnings():
         warnings.filterwarnings('error')
         try:
@@ -114,7 +117,10 @@ def skew_(val,freq):
             return (snumer.sum()/(freq.sum()))
         except Warning as e:
             print ("Skew warning: ", e)
+            print ("name: ", name)
             undef = -30
+            #temp = "Skew " + name
+            #viz.bar(X=val,Y=freq,opts=dict(title=temp))
             return undef
 
 def percentile(thehist, N, percent):
@@ -142,9 +148,10 @@ def percentile(thehist, N, percent):
 
     return bc,theind
 
-def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
+def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
     '''Get 10th, 25th, 75th percentile histogram features
-    quartile [75th - 25th], mean, median, variance, kurtosis, and the skewness 
+    quartile [75th - 25th], mean, median, variance, kurtosis, and the skewness
+    @name - name of different maps
     '''
     
     numfeats = 9
@@ -162,12 +169,17 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
     lperfhist = []
     lfhist = []
 
-    """ skew_kurt = viz.line(
+    plt.figure()
+    amap = fmaps[5].reshape(64,64)
+    imgplot = plt.imshow(amap)
+    imgplot.set_cmap('nipy_spectral')
+
+    skew_kurt = viz.line(
     Y=np.column_stack((np.zeros((1)),np.zeros((1)))),
     X=np.column_stack((np.zeros((1)),np.zeros((1)))),
-    opts=dict(xlabel='sample',ylabel='Value',title='Skew and Kurtosis values'))
+    opts=dict(xlabel='sample',ylabel='Value',title='Skew and Kurtosis values {}'.format(name[-1])))
 
-
+    """
     percentiles = viz.line(
     Y=np.column_stack((np.zeros((1)),np.zeros((1)),np.zeros((1)),np.zeros((1)))),
     X=np.column_stack((np.zeros((1)),np.zeros((1)),np.zeros((1)),np.zeros((1)))),
@@ -196,7 +208,7 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         #First generate histogram for amap:
         thist = np.histogram(a.ravel()[np.flatnonzero(a)],bins=bin_width[0],range=(amin,amax),density=True)
         cs  = np.cumsum(thist[0])
-
+        temp = "name {} and map number {}".format(name[0],i)
         #calculate histogram features
         lahist.append(thist)
         ahist[i][0], _ = percentile(thist, cs.tolist(), 0.10)
@@ -218,10 +230,10 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         avar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        akurt = kurt_(bc[:-1],thist[0])
+        akurt = kurt_(temp,bc[:-1],thist[0])
         
         #calculate skew
-        askew = skew_(bc[:-1],thist[0])
+        askew = skew_(temp,bc[:-1],thist[0])
 
         #calculate quartile 
         aquartile = ahist[i][3]-ahist[i][1]
@@ -234,7 +246,7 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
 
         #First generate histogram for bmap:
         thist = np.histogram(b.ravel()[np.flatnonzero(b)],bins=bin_width[1],range=(bmin,bmax),density=True)
-
+        temp = "name {} and map number {}".format(name[1],i)
         cs  = np.cumsum(thist[0])
         lbhist.append(thist)
         #calculate histogram features
@@ -256,10 +268,10 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         bvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        bkurt = kurt_(bc[:-1],thist[0])
+        bkurt = kurt_(temp,bc[:-1],thist[0])
         
         #calculate skew
-        bskew = skew_(bc[:-1],thist[0])
+        bskew = skew_(temp, bc[:-1],thist[0])
 
         #calculate quartile
         bquartile = bhist[i][3]-bhist[i][1]
@@ -275,7 +287,7 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         thist = np.histogram(d.ravel()[np.flatnonzero(d)],bins=bin_width[2],range=(dmin,dmax),density=True)
         cs  = np.cumsum(thist[0])
         ldhist.append(thist)
-
+        temp = "name {} and map number {}".format(name[2],i)
         #calculate histogram features
         dhist[i][0], _ = percentile(thist, cs.tolist(), 0.10)
         dhist[i][1], _ = percentile(thist, cs.tolist(), 0.25)
@@ -296,10 +308,10 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         dvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        dkurt = kurt_(bc[:-1],thist[0])
+        dkurt = kurt_(temp, bc[:-1],thist[0])
         
         #calculate skew
-        dskew = skew_(bc[:-1],thist[0])
+        dskew = skew_(temp, bc[:-1],thist[0])
 
         #calculate quartile
         dquartile = dhist[i][3]-dhist[i][1]
@@ -316,7 +328,7 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         thist = np.histogram(e.ravel()[np.flatnonzero(e)],bins=bin_width[3],range=(diffmin,diffmax),density=True)
         cs  = np.cumsum(thist[0])
         ldiffhist.append(thist)
-
+        temp = "name {} and map number {}".format(name[3],i)
         #calculate histogram features
         diffhist[i][0], _ = percentile(thist, cs.tolist(), 0.10)
         diffhist[i][1], _ = percentile(thist, cs.tolist(), 0.25)
@@ -339,10 +351,10 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         diffvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        diffkurt = kurt_(bc[:-1],thist[0])
+        diffkurt = kurt_(temp, bc[:-1],thist[0])
         
         #calculate skew
-        diffskew = skew_(bc[:-1],thist[0])
+        diffskew = skew_(temp, bc[:-1],thist[0])
 
         #calculate quartile
         diffquartile = diffhist[i][3]-diffhist[i][1]
@@ -358,7 +370,7 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         thist = np.histogram(f.ravel()[np.flatnonzero(f)],bins=bin_width[4],range=(perfmin,perfmax),density=True)
         cs  = np.cumsum(thist[0])
         lperfhist.append(thist)
-
+        temp = "name {} and map number {}".format(name[4],i)
         #calculate histogram features
         perfhist[i][0], _ = percentile(thist, cs.tolist(), 0.10)
         perfhist[i][1], _ = percentile(thist, cs.tolist(), 0.25)
@@ -382,10 +394,10 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         perfvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        perfkurt = kurt_(bc[:-1],thist[0])
+        perfkurt = kurt_(temp, bc[:-1],thist[0])
         
         #calculate skew
-        perfskew = skew_(bc[:-1],thist[0])
+        perfskew = skew_(temp, bc[:-1],thist[0])
 
         #calculate quartile
         perfquartile = perfhist[i][3]-perfhist[i][1]
@@ -402,7 +414,7 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         thist = np.histogram(g.ravel()[np.flatnonzero(g)],bins=bin_width[5],range=(fmin,fmax),density=True)
         cs  = np.cumsum(thist[0])
         lfhist.append(thist)
-
+        temp = "name {} and map number {}".format(name[5],i)
         #calculate histogram features
         fhist[i][0], _ = percentile(thist, cs.tolist(), 0.10)
         fhist[i][1], _ = percentile(thist, cs.tolist(), 0.25)
@@ -424,10 +436,10 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         fvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        fkurt = kurt_(bc[:-1],thist[0])
+        fkurt = kurt_(temp, bc[:-1],thist[0])
         
         #calculate skew
-        fskew = skew_(bc[:-1],thist[0])
+        fskew = skew_(temp, bc[:-1],thist[0])
 
         #calculate quartile
         fquartile = fhist[i][3]-fhist[i][1]
@@ -437,13 +449,14 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         fhist[i][6] = fvar
         fhist[i][7] = fkurt
         fhist[i][8] = fskew
-
-        viz.bar(X=thist[0],Y=bc[:-1])
+        temp = 'Name: {} - Index: {}'.format(name[-1], i)
+        #if i==5:
+        #    viz.bar(X=thist[0],Y=bc[:-1],opts=dict(title=temp))
 
         ##Visualization updates:
 
-        #viz.line(X=np.ones((1))*i,Y=[askew],win=skew_kurt,name='s',update='append')
-        #viz.line(X=np.ones((1))*i,Y=[akurt],win=skew_kurt,name='k',update='append')
+        #viz.line(X=np.ones((1))*i,Y=[perfskew],win=skew_kurt,name='s',update='append')
+        #viz.line(X=np.ones((1))*i,Y=[perfkurt],win=skew_kurt,name='k',update='append')
 
 
         #percentile updates
@@ -532,7 +545,7 @@ def getFeatures(getv2, binwidth, file_path, name, ofile_path, onames):
     saveFeatures(ofile_path[0], onames[0:3], afiles, bfiles, dfiles, ahist, bhist, dhist, lahist, lbhist, ldhist)
     print ("saving diff,perf,F Features")
     saveFeaturesIVIM(ofile_path[1], onames[3:], diff_files, perf_files, f_files, diff_hist, perf_hist, f_hist, ldiff_hist, lperf_hist, lfhist)
-
+    #plt.show()
 
 
 #histogram bin width
@@ -591,7 +604,7 @@ ofile_path = ['maxminFeat', 'maxminFeatIvim']
 oname = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
 getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
-
+#plt.show()
 print ("finished with feature extraction")
 
 
