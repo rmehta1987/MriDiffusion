@@ -387,35 +387,36 @@ def runProcess():
     print ("saved masked Files")
 
     #Pad Files to 64x64 - if running first time
-    '''alldicts = [adict, bdict, ddict, diff_dict, perf_dict, f_dict]
+    alldicts = [adict, bdict, ddict, diff_dict, perf_dict, f_dict]
     name = ['apad', 'bpad', 'dpad', 'diffpad', 'perfpad', 'fpad']
     alldicts = padFiles(alldicts, name)
     print ("padded files")
 
     #Save Padded Files
     saveDicts(alldicts, name)
-    print ("saved padded Files")'''
-
-    #Load Masked Files and Pad
-    file_path = 'mmasks'
-    name = ['amask', 'bmask', 'dmask', 'diffmask', 'perfmask', 'fmask']
-    lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files = loadexisting(file_path, name)
-    
-    
-    print ("Number of files extracted (should be 40) from loading masks: %d"%(len(lafiles)))
-    
-    lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files = padFilesasList([lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
-    print ("padded files")
-
-    name = ['apad', 'bpad', 'dpad', 'diffpad', 'perfpad', 'fpad']
-    savewithPatient(file_path, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
     print ("saved padded Files")
 
-    #load padded images to a list, useful for when files already exist;
+    #Load Masked Files and Pad
     #file_path = 'mmasks'
+    #name = ['amask', 'bmask', 'dmask', 'diffmask', 'perfmask', 'fmask']
     #lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files = loadexisting(file_path, name)
-    #print ("loaded existing files")
+    
+    
+    #print ("Number of files extracted (should be 40) from loading masks: %d"%(len(lafiles)))
+    
+    #lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files = padFilesasList([lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
+    #print ("padded files")
 
+    #name = ['apad', 'bpad', 'dpad', 'diffpad', 'perfpad', 'fpad']
+    #savewithPatient(file_path, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
+    #print ("saved padded Files")
+
+    #load padded images to a list, useful for when files already exist;
+    file_path = 'mmasks'
+    name = ['apad', 'bpad', 'dpad', 'diffpad', 'perfpad', 'fpad']
+    lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files = loadexisting(file_path, name)
+    print ("Number of files extracted (should be 40) from loading padded masks: %d"%(len(lafiles)))
+    
     #Use Max-Min normalization:
     lafiles, lbfiles, ldfiles = MaxMinNorm(lafiles, lbfiles, ldfiles)
     ldiff_files, lperf_files, lf_files = MaxMinNorm(ldiff_files, lperf_files, lf_files)
@@ -444,3 +445,5 @@ filepath = 'maxmin'
 name = ['mm_apad', 'mm_bpad', 'mm_dpad', 'mm_diffpad', 'mm_perfpad', 'mm_fpad']
 savewithPatient(filepath, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
 '''
+
+runProcess()
