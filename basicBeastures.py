@@ -13,8 +13,10 @@ from visdom import Visdom
 from scipy import stats
 import math
 import functools
+import warnings
 
-np.seterr(all='raise')  #for warnings 
+
+np.seterr(all='warn')  #for warnings 
 
 def getFiles(file_path,name):
 
@@ -89,16 +91,31 @@ def var_(val, freq):
     return dev.sum() / (freq.sum() - 1)
 
 def kurt_(val,freq):
-    numer = (val - mean_(val,freq))
-    knumer = numer/np.sqrt(var_(val,freq))
-    knumer = freq*(knumer**4)
-    return (knumer.sum()/(freq.sum()))-3
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error')
+        try:
+            numer = (val - mean_(val,freq))
+            knumer = numer/np.sqrt(var_(val,freq))
+            knumer = freq*(knumer**4)
+            return (knumer.sum()/(freq.sum()))-3
+        except Warning as e:
+            print ("Kurt warning: ", e)
+            undef = -10
+            return undef
+    
 
 def skew_(val,freq):
-    numer = (val - mean_(val,freq))
-    snumer = numer/np.sqrt(var_(val,freq))
-    snumer = freq*(snumer**3)
-    return (snumer.sum()/(freq.sum()))
+    with warnings.catch_warnings():
+        warnings.filterwarnings('error')
+        try:
+            numer = (val - mean_(val,freq))
+            snumer = numer/np.sqrt(var_(val,freq))
+            snumer = freq*(snumer**3)
+            return (snumer.sum()/(freq.sum()))
+        except Warning as e:
+            print ("Skew warning: ", e)
+            undef = -30
+            return undef
 
 def percentile(thehist, N, percent):
     '''
@@ -108,8 +125,10 @@ def percentile(thehist, N, percent):
     @parameter percent - a float value from 0.0 to 1.0.
     @return - the bin-edge corresponding to the percentile value'''
 
+
     theval = np.floor(N[-1]*percent)
     theind = np.searchsorted(N,theval)
+  
     if theind == 0:
         bc1 = thehist[1][theind+1]
         theperc = theval / thehist[0][theind]
@@ -178,13 +197,11 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         thist = np.histogram(a.ravel()[np.flatnonzero(a)],bins=bin_width[0],range=(amin,amax),density=True)
         cs  = np.cumsum(thist[0])
 
-        if i == 5:
-            print ("time to befus")
         #calculate histogram features
         lahist.append(thist)
         ahist[i][0], _ = percentile(thist, cs.tolist(), 0.10)
         ahist[i][1], _ = percentile(thist, cs.tolist(), 0.25)
-        ahist[i][2], _ = percentile(thist, cs.tolist(), 0.50)
+        ahist[i][2], _ = percentile(thist, cs.tolist(), 0.50) #median
         ahist[i][3], idx = percentile(thist, cs.tolist(), 0.75)
 
         #calculate bin centers:
@@ -192,29 +209,28 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
 
         
         #calculate median
-        amid = ahist[i][2]
+        #amid = ahist[i][2]
         
         #calculate mean
-        amean = mean_(bc[0:idx+1],thist[0][0:idx+1])
+        amean = mean_(bc[:-1],thist[0])
 
         #calculate variance
-        avar = var_(bc[0:idx+1],thist[0][0:idx+1])
+        avar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        akurt = kurt_(bc,thist[0])
+        akurt = kurt_(bc[:-1],thist[0])
         
         #calculate skew
-        askew = skew_(bc[0:idx+1],thist[0][0:idx+1])
+        askew = skew_(bc[:-1],thist[0])
 
         #calculate quartile 
         aquartile = ahist[i][3]-ahist[i][1]
 
         ahist[i][4] = aquartile
         ahist[i][5] = amean
-        ahist[i][6] = amid
-        ahist[i][7] = avar
-        ahist[i][8] = akurt
-        ahist[i][9] = askew
+        ahist[i][6] = avar
+        ahist[i][7] = akurt
+        ahist[i][8] = askew
 
         #First generate histogram for bmap:
         thist = np.histogram(b.ravel()[np.flatnonzero(b)],bins=bin_width[1],range=(bmin,bmax),density=True)
@@ -231,29 +247,28 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         bc = thist[1] + (thist[1][1] - thist[1][0])/2
         
         #calculate median
-        bmid = bhist[i][2]
+       # bmid = bhist[i][2]
         
         #calculate mean
-        bmean = mean_(bc[0:idx+1],thist[0][0:idx+1])
+        bmean = mean_(bc[:-1],thist[0])
 
         #calculate variance
-        bvar = var_(bc[0:idx+1],thist[0][0:idx+1])
+        bvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        bkurt = kurt_(bc[0:idx+1],thist[0][0:idx+1])
+        bkurt = kurt_(bc[:-1],thist[0])
         
         #calculate skew
-        bskew = skew_(bc[0:idx+1],thist[0][0:idx+1])
+        bskew = skew_(bc[:-1],thist[0])
 
         #calculate quartile
         bquartile = bhist[i][3]-bhist[i][1]
 
         bhist[i][4] = bquartile
         bhist[i][5] = bmean
-        bhist[i][6] = bmid
-        bhist[i][7] = bvar
-        bhist[i][8] = bkurt
-        bhist[i][9] = bskew
+        bhist[i][6] = bvar
+        bhist[i][7] = bkurt
+        bhist[i][8] = bskew
 
 
         #First generate histogram for dmap:
@@ -272,29 +287,28 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         bc = thist[1] + (thist[1][1] - thist[1][0])/2
                
         #calculate median
-        dmid = dhist[i][2]
+        #dmid = dhist[i][2]
         
         #calculate mean
-        dmean = mean_(bc[0:idx+1],thist[0][0:idx+1])
+        dmean = mean_(bc[:-1],thist[0])
 
         #calculate variance
-        dvar = var_(bc[0:idx+1],thist[0][0:idx+1])
+        dvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        dkurt = kurt_(bc[0:idx+1],thist[0][0:idx+1])
+        dkurt = kurt_(bc[:-1],thist[0])
         
         #calculate skew
-        dskew = skew_(bc[0:idx+1],thist[0][0:idx+1])
+        dskew = skew_(bc[:-1],thist[0])
 
         #calculate quartile
         dquartile = dhist[i][3]-dhist[i][1]
 
         dhist[i][4] = dquartile
         dhist[i][5] = dmean
-        dhist[i][6] = dmid
-        dhist[i][7] = dvar
-        dhist[i][8] = dkurt
-        dhist[i][9] = dskew
+        dhist[i][6] = dvar
+        dhist[i][7] = dkurt
+        dhist[i][8] = dskew
 
         #####Ivim histograms***************************************************************************************#
 
@@ -316,29 +330,28 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
 
        
         #calculate median
-        diffmid = diffhist[i][2]
+        #diffmid = diffhist[i][2]
         
         #calculate mean
-        diffmean = mean_(bc[0:idx+1],thist[0][0:idx+1])
+        diffmean = mean_(bc[:-1],thist[0])
 
         #calculate variance
-        diffvar = var_(bc[0:idx+1],thist[0][0:idx+1])
+        diffvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        diffkurt = kurt_(bc[0:idx+1],thist[0][0:idx+1])
+        diffkurt = kurt_(bc[:-1],thist[0])
         
         #calculate skew
-        diffskew = skew_(bc[0:idx+1],thist[0][0:idx+1])
+        diffskew = skew_(bc[:-1],thist[0])
 
         #calculate quartile
         diffquartile = diffhist[i][3]-diffhist[i][1]
 
         diffhist[i][4] = diffquartile
         diffhist[i][5] = diffmean
-        diffhist[i][6] = diffmid
-        diffhist[i][7] = diffvar
+        diffhist[i][6] = diffvar
         diffhist[i][8] = diffkurt
-        diffhist[i][9] = diffskew
+        diffhist[i][8] = diffskew
 
 
         #First generate histogram for perf_map:
@@ -360,29 +373,28 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
   
         
         #calculate median
-        perfmid = perfhist[i][2]
+        #perfmid = perfhist[i][2]
         
         #calculate mean
-        perfmean = mean_(bc[0:idx+1],thist[0][0:idx+1])
+        perfmean = mean_(bc[:-1],thist[0])
 
         #calculate variance
-        perfvar = var_(bc[0:idx+1],thist[0][0:idx+1])
+        perfvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        perfkurt = kurt_(bc[0:idx+1],thist[0][0:idx+1])
+        perfkurt = kurt_(bc[:-1],thist[0])
         
         #calculate skew
-        perfskew = skew_(bc[0:idx+1],thist[0][0:idx+1])
+        perfskew = skew_(bc[:-1],thist[0])
 
         #calculate quartile
         perfquartile = perfhist[i][3]-perfhist[i][1]
 
         perfhist[i][4] = perfquartile
         perfhist[i][5] = perfmean
-        perfhist[i][6] = perfmid
-        perfhist[i][7] = perfvar
-        perfhist[i][8] = perfkurt
-        perfhist[i][9] = perfskew
+        perfhist[i][6] = perfvar
+        perfhist[i][7] = perfkurt
+        perfhist[i][8] = perfskew
 
 
 
@@ -403,31 +415,30 @@ def getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_width):
         bc = thist[1] + (thist[1][1] - thist[1][0])/2
 
         #calculate median
-        fmid = fhist[i][2]
+        #fmid = fhist[i][2]
         
         #calculate mean
-        fmean = mean_(bc[0:idx+1],thist[0][0:idx+1])
+        fmean = mean_(bc[:-1],thist[0])
 
         #calculate variance
-        fvar = var_(bc[0:idx+1],thist[0][0:idx+1])
+        fvar = var_(bc[:-1],thist[0])
 
         #calculate kurtosis
-        fkurt = kurt_(bc[0:idx+1],thist[0][0:idx+1])
+        fkurt = kurt_(bc[:-1],thist[0])
         
         #calculate skew
-        fskew = skew_(bc[0:idx+1],thist[0][0:idx+1])
+        fskew = skew_(bc[:-1],thist[0])
 
         #calculate quartile
         fquartile = fhist[i][3]-fhist[i][1]
 
         fhist[i][4] = fquartile
         fhist[i][5] = fmean
-        fhist[i][6] = fmid
-        fhist[i][7] = fvar
-        fhist[i][8] = fkurt
-        fhist[i][9] = fskew
+        fhist[i][6] = fvar
+        fhist[i][7] = fkurt
+        fhist[i][8] = fskew
 
-        viz.bar(X=thist[0],Y=thist[1])
+        viz.bar(X=thist[0],Y=bc[:-1])
 
         ##Visualization updates:
 
@@ -514,7 +525,7 @@ def getFeatures(getv2, binwidth, file_path, name, ofile_path, onames):
     amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps = getMaps([afiles, bfiles, dfiles, diff_files, perf_files, f_files])
     print ("get histograms")
 
-    ahist, bhist, dhist, lahist, lbhist, ldhist, diff_hist, perf_hist, f_hist, ldiff_hist, lperf_hist, lfhist = getHistFeatures(amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, binwidth)
+    ahist, bhist, dhist, lahist, lbhist, ldhist, diff_hist, perf_hist, f_hist, ldiff_hist, lperf_hist, lfhist = getHistFeatures(name,amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, binwidth)
 
     print ("obtained histograms")
     print ("saving A,B,DDC Features")
@@ -578,6 +589,7 @@ file_path = 'maxminAug'
 name = ['cropaug3_alpha_','cropaug3_beta_','cropaug3_ddc_', 'cropaug3_diff', 'cropaug3_perf', 'cropaug3_f']
 ofile_path = ['maxminFeat', 'maxminFeatIvim']
 oname = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
+getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
 
 print ("finished with feature extraction")
