@@ -37,26 +37,26 @@ names = ["Linear_SVM", "RBF_SVM", "Gaussian_Process",
          "Naive_Bayes"]
 
     
-#Feature Names, a10 represents 10th percentile and so on.    
-fnames = ["a10", "a25", "a50", "a75", "aquartile", "amean", "amid", "avar", "akurt", 
-"askew",  "b10", "b25", "b50", "b75", "bquartile", "bmean", "bmid", "bvr", "bkurt", 
-"bskew", "d10", "d25", "d50", "d75", "dquartile","dmean", "dmid", "dvr", "dkurt", "dskew"]         
+#Feature Names, a10 represents 10th percentile and so on, note that 50th percentile is equivalent to median of histogram
+fnames = ["a10", "a25", "a50", "a75", "aquartile", "amean", "avar", "akurt", 
+"askew",  "b10", "b25", "b50", "b75", "bquartile", "bmean", "bvr", "bkurt", 
+"bskew", "d10", "d25", "d50", "d75", "dquartile","dmean",  "dvra", "dkurt", "dskew"]         
 
-f2names = ["a10", "a25", "a50", "a75", "aquartile", "amean", "amid", "avar", "akurt", 
-"askew",  "b10", "b25", "b50", "b75", "bquartile", "bmean", "bmid", "bvr", "bkurt", 
-"bskew", "d10", "d25", "d50", "d75", "dquartile","dmean", "dmid", "dvr", "dkurt", "dskew",
-"diff10", "diff25", "diff50", "diff75", "diffquartile", "diffmean", "diffmid", "diffvar", "diffkurt", "diffskew",
-"perf10", "perf25", "perf50", "perf75", "perfquartile", "perfmean", "perfmid", "perfvar", "perfkurt", "perfskew",
-"f10", "f25", "f50", "f75", "fquartile", "fmean", "fmid", "fvar", "fkurt", "fskew"]       
+f2names = ["a10", "a25", "a50", "a75", "aquartile", "amean", "avar", "akurt", 
+"askew",  "b10", "b25", "b50", "b75", "bquartile", "bmean", "bvar", "bkurt", 
+"bskew", "d10", "d25", "d50", "d75", "dquartile","dmean", "dvar", "dkurt", "dskew",
+"diff10", "diff25", "diff50", "diff75", "diffquartile", "diffmean", "diffvar", "diffkurt", "diffskew",
+"perf10", "perf25", "perf50", "perf75", "perfquartile", "perfmean", "perfvar", "perfkurt", "perfskew",
+"f10", "f25", "f50", "f75", "fquartile", "fmean", "fvar", "fkurt", "fskew"]       
 
 def getFiles(file_path, name):
 
-    afiles = sorted(glob.glob('%s/%s*.npy'%(file_path,name[0])))
-    bfiles = sorted(glob.glob('%s/%s*.npy'%(file_path,name[1])))
-    dfiles = sorted(glob.glob('%s/%s*.npy'%(file_path,name[2])))
-    difffiles = sorted(glob.glob('%s/%s*.npy'%(file_path,name[3])))
-    perffiles = sorted(glob.glob('%s/%s*.npy'%(file_path,name[4])))
-    ffiles = sorted(glob.glob('%s/%s*.npy'%(file_path,name[5])))
+    afiles = sorted(glob.glob('%s/%s*.npy'%(file_path[0],name[0])))
+    bfiles = sorted(glob.glob('%s/%s*.npy'%(file_path[0],name[1])))
+    dfiles = sorted(glob.glob('%s/%s*.npy'%(file_path[0],name[2])))
+    difffiles = sorted(glob.glob('%s/%s*.npy'%(file_path[1],name[3])))
+    perffiles = sorted(glob.glob('%s/%s*.npy'%(file_path[1],name[4])))
+    ffiles = sorted(glob.glob('%s/%s*.npy'%(file_path[1],name[5])))
     lafiles = []
     lbfiles = []
     ldfiles = []
@@ -75,6 +75,7 @@ def getFiles(file_path, name):
     return lafiles, lbfiles, ldfiles, ldifffiles, lperffiles, lffiles
 
 def createFeatMat(train, test, afiles, bfiles, dfiles):
+
 
     xtrain = np.zeros((len(train),30)) #Feature Matrix [a-features, b-features, d-features]
     ytrain = np.zeros((len(train))) #label matrix
@@ -151,29 +152,25 @@ classifiers = [
     GaussianNB()]
 
 print ("Getting Files containing features of original maps")
-file_path = 'maxminFeatIvim'
-name = ['mm_apad_','mm_bpad_','mm_dpad_', 'mm_diffpad_', 'mm_perfpad_', 'mm_fpad_']
+file_path = ['maxminFeat', 'maxminFeatIvim']
+name = ['mm_apad_feat','mm_bpad_feat','mm_dpad_feat', 'mm_diffpad_feat', 'mm_perfpad_feat', 'mm_fpad_feat']
 afiles, bfiles, dfiles, diff_files, perf_files, f_files = getFiles(file_path,name)
 
 print ("Getting files of augmented maps -- Crop 1")
-file_path = 'maxminAugFeatIvim'
-name = ['cropaug1_alpha_','cropaug1_beta_','cropaug1_ddc_', 'cropaug1_diff', 'cropaug1_perf', 'cropaug1_f']
+name = ['cropaug1_alpha_feat','cropaug1_beta_feat','cropaug1_ddc_feat', 'cropaug1_diff_feat', 'cropaug1_perf_feat', 'cropaug1_f_feat']
 c1afiles, c1bfiles, c1dfiles, c1diff_files, c1perf_files, c1f_files = getFiles(file_path,name)
 
 
 print ("Getting files of augmented maps -- Crop 2")
-file_path = 'maxminAugFeatIvim'
-name = ['cropaug2_alpha_','cropaug2_beta_','cropaug2_ddc_', 'cropaug2_diff', 'cropaug2_perf', 'cropaug2_f']
+name = ['cropaug2_alpha_feat','cropaug2_beta_feat','cropaug2_ddc_feat', 'cropaug2_diff_feat', 'cropaug2_perf_feat', 'cropaug2_f_feat']
 c2afiles, c2bfiles, c2dfiles, c2diff_files, c2perf_files, c2f_files = getFiles(file_path,name)
 
 print ("Getting files of augmented maps -- Crop 3")
-file_path = 'maxminAugFeatIvim'
-name = ['cropaug3_alpha_','cropaug3_beta_','cropaug3_ddc_', 'cropaug3_diff', 'cropaug3_perf', 'cropaug3_f']
+name = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
 c3afiles, c3bfiles, c3dfiles, c3diff_files, c3perf_files, c3f_files = getFiles(file_path,name)
 
 print ("Getting files of augmented maps -- Original Augmented Rotated")
-file_path = 'maxminAugFeatIvim'
-name = ['ogaug_alpha_','ogaug_beta_','ogaug_ddc_', 'ogaug_diff', 'ogaug_perf', 'ogaug_f']
+name = ['ogaug_alpha_feat','ogaug_beta_feat','ogaug_ddc_feat', 'ogaug_diff_feat', 'ogaug_perf_feat', 'ogaug_f_feat']
 augafiles, augbfiles, augdfiles, augdiff_files, augperf_files, augf_files = getFiles(file_path,name)
 
 
@@ -1196,6 +1193,11 @@ viz.line(X=X,Y=Y,opts=dict(xlabel='fpr',ylabel='tpr',title='ROC of Best Estimato
 
 #viz.line(X=fpr,Y=tpr,opts=dict(xlabel='fpr',ylabel='tpr',title='ROC of Best Gradient Boost Estimator {}'.format(names[i]),legend=fold_names))
 
+b_feats = model.feature_importances_
 
+indices = np.argsort(b_feats)
+temp = np.array(f2names)[indices]
+
+viz.bar(X=np.sort(b_feats),opts=dict(stacked=False,rownames=temp.tolist()))
 
 print ("COMPLETED WOO")
