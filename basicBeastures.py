@@ -547,72 +547,63 @@ def getFeatures(getv2, binwidth, file_path, name, ofile_path, onames):
     saveFeaturesIVIM(ofile_path[1], onames[3:], diff_files, perf_files, f_files, diff_hist, perf_hist, f_hist, ldiff_hist, lperf_hist, lfhist)
     #plt.show()
 
+def runScript():
 
-#histogram bin width
-awidth = 80
-bwidth = 80
-dwidth = 80
-diff_width = 80
-perf_width = 80
-f_width = 80
+    #histogram bin width
+    awidth = 80
+    bwidth = 80
+    dwidth = 80
+    diff_width = 80
+    perf_width = 80
+    f_width = 80
 
-binwidth = [awidth,bwidth,dwidth, diff_width, perf_width, f_width]
+    binwidth = [awidth,bwidth,dwidth, diff_width, perf_width, f_width]
 
-#Generate and Save Features of Orignal Maps *********************************************** #
-
-
-file_path = 'maxmin'
-ofile_path = ['maxminFeat', 'maxminFeatIvim']
-name = ['mm_apad','mm_bpad','mm_dpad','mm_diffpad', 'mm_perfpad', 'mm_fpad']
-oname = ['mm_apad_feat','mm_bpad_feat','mm_dpad_feat', 'mm_diffpad_feat', 'mm_perfpad_feat', 'mm_fpad_feat']
-
-getFeatures(False, binwidth,file_path, name, ofile_path, oname)
-
-#Generate and Save Features of Augmented Orignal Maps (non-cropped) *********************************************** #
-
-file_path = 'maxminAug'
-name = ['ogaug_alpha_','ogaug_beta_','ogaug_ddc_', 'ogaug_diff', 'ogaug_perf', 'ogaug_f']
-ofile_path = ['maxminFeat', 'maxminFeatIvim']
-oname = ['ogaug_alpha_feat','ogaug_beta_feat','ogaug_ddc_feat', 'ogaug_diff_feat', 'ogaug_perf_feat', 'ogaug_f_feat']
-
-getFeatures(True, binwidth,file_path, name, ofile_path, oname)
+    #Generate and Save Features of Orignal Maps *********************************************** #
 
 
-#Generate and Save Features of Augmented Crop Images 1 ********************************************** #
+    file_path = 'maxmin'
+    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    name = ['mm_apad','mm_bpad','mm_dpad','mm_diffpad', 'mm_perfpad', 'mm_fpad']
+    oname = ['mm_apad_feat','mm_bpad_feat','mm_dpad_feat', 'mm_diffpad_feat', 'mm_perfpad_feat', 'mm_fpad_feat']
 
-file_path = 'maxminAug'
-name = ['cropaug1_alpha_','cropaug1_beta_','cropaug1_ddc_', 'cropaug1_diff', 'cropaug1_perf', 'cropaug1_f']
-ofile_path = ['maxminFeat', 'maxminFeatIvim']
-oname = ['cropaug1_alpha_feat','cropaug1_beta_feat','cropaug1_ddc_feat', 'cropaug1_diff_feat', 'cropaug1_perf_feat', 'cropaug1_f_feat']
-getFeatures(True, binwidth,file_path, name, ofile_path, oname)
+    getFeatures(False, binwidth,file_path, name, ofile_path, oname)
+
+    #Generate and Save Features of Augmented Orignal Maps (non-cropped) *********************************************** #
+
+    file_path = 'maxminAug'
+    name = ['ogaug_alpha_','ogaug_beta_','ogaug_ddc_', 'ogaug_diff', 'ogaug_perf', 'ogaug_f']
+    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    oname = ['ogaug_alpha_feat','ogaug_beta_feat','ogaug_ddc_feat', 'ogaug_diff_feat', 'ogaug_perf_feat', 'ogaug_f_feat']
+
+    getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
 
+    #Generate and Save Features of Augmented Crop Images 1 ********************************************** #
 
-#Generate and Save Features of Augmented Crop Images 2
-file_path = 'maxminAug'
-name = ['cropaug2_alpha_','cropaug2_beta_','cropaug2_ddc_', 'cropaug2_diff', 'cropaug2_perf', 'cropaug2_f']
-ofile_path = ['maxminFeat', 'maxminFeatIvim']
-oname = ['cropaug2_alpha_feat','cropaug2_beta_feat','cropaug2_ddc_feat', 'cropaug2_diff_feat', 'cropaug2_perf_feat', 'cropaug2_f_feat']
-getFeatures(True, binwidth,file_path, name, ofile_path, oname)
-
-
-#Generate and Save Features of Augmented Crop Images 3
-
-file_path = 'maxminAug'
-name = ['cropaug3_alpha_','cropaug3_beta_','cropaug3_ddc_', 'cropaug3_diff', 'cropaug3_perf', 'cropaug3_f']
-ofile_path = ['maxminFeat', 'maxminFeatIvim']
-oname = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
-getFeatures(True, binwidth,file_path, name, ofile_path, oname)
-
-#plt.show()
-print ("finished with feature extraction")
+    file_path = 'maxminAug'
+    name = ['cropaug1_alpha_','cropaug1_beta_','cropaug1_ddc_', 'cropaug1_diff', 'cropaug1_perf', 'cropaug1_f']
+    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    oname = ['cropaug1_alpha_feat','cropaug1_beta_feat','cropaug1_ddc_feat', 'cropaug1_diff_feat', 'cropaug1_perf_feat', 'cropaug1_f_feat']
+    getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
 
 
+    #Generate and Save Features of Augmented Crop Images 2
+    file_path = 'maxminAug'
+    name = ['cropaug2_alpha_','cropaug2_beta_','cropaug2_ddc_', 'cropaug2_diff', 'cropaug2_perf', 'cropaug2_f']
+    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    oname = ['cropaug2_alpha_feat','cropaug2_beta_feat','cropaug2_ddc_feat', 'cropaug2_diff_feat', 'cropaug2_perf_feat', 'cropaug2_f_feat']
+    getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
 
+    #Generate and Save Features of Augmented Crop Images 3
 
-
+    file_path = 'maxminAug'
+    name = ['cropaug3_alpha_','cropaug3_beta_','cropaug3_ddc_', 'cropaug3_diff', 'cropaug3_perf', 'cropaug3_f']
+    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    oname = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
+    getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
 ###Notes:
 
