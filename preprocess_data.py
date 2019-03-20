@@ -30,7 +30,7 @@ import re  # import regex
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from combat import neuroCombat
+#from combat import neuroCombat
 
 
 #This function is hard-coded, as we want to to know the individual maps extracted from the Mat Files
