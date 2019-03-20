@@ -34,7 +34,7 @@ from combat import neuroCombat
 
 
 #This function is hard-coded, as we want to to know the individual maps extracted from the Mat Files
-def createFiles(foldernames):
+def createFiles(filepath, foldernames):
     '''@foldernames is the name of the folder where maps will be saved and should be 
         sorted as [amaps, bmaps, ddc-maps, diffmaps, perfmaps, fmaps]'''
     '''Directors are in current directory, model_results and ROI, 
@@ -48,10 +48,11 @@ def createFiles(foldernames):
     idiff_dict = {}
     iperf_dict = {}
     if_dict = {}
-    modelFiles = sorted(glob.glob('model_results/*.mat')) #A, B, DDC maps
-    ivimFiles = sorted(glob.glob('ivim/*ivim*.mat')) #IVIM Files 
-    rois = sorted(glob.glob('ROIS/*.mat'))
-    csvlabels = pd.read_csv('FROC_Patient_Diagnosis.csv')
+    thecsv = filepath[3]+'FROC_Patient_Diagnosis.csv'
+    modelFiles = sorted(glob.glob('%s/*.mat'%(filepath[0]))) #A, B, DDC maps
+    ivimFiles = sorted(glob.glob('%s/*ivim*.mat'%(filepath[1]))) #IVIM Files 
+    rois = sorted(glob.glob('%s/*.mat'%(filepath[2])))
+    csvlabels = pd.read_csv(thecsv)
     #patientset = set() #store patient names, since patients may have multiple slices
     for i in range(0,len(modelFiles)):
         matmodel = sio.loadmat(modelFiles[i])
@@ -376,9 +377,9 @@ def saveDicts(alldicts, name):
 def runProcess():
 
     #-----Create Files from Masks and Original MRI slices
-    
+    filepath = ['model_results','ivim', 'ROIS', '']
     filenames = ['mmasks/mask_alpha_','mmasks/mask_beta_','mmasks/mask_ddc_','mmasks/mask_diff_','mmasks/mask_perf_','mmasks/mask_f_']
-    adict, bdict, ddict, diff_dict, perf_dict, f_dict = createFiles(filenames)
+    adict, bdict, ddict, diff_dict, perf_dict, f_dict = createFiles(filepath,filenames)
     print ("created Files")
 
     #saved Masked Files
@@ -445,5 +446,7 @@ filepath = 'maxmin'
 name = ['mm_apad', 'mm_bpad', 'mm_dpad', 'mm_diffpad', 'mm_perfpad', 'mm_fpad']
 savewithPatient(filepath, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
 '''
+
+
 
 runProcess()
