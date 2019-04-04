@@ -28,6 +28,9 @@ from sklearn.model_selection import train_test_split
 from scipy import interp
 from sklearn.metrics import roc_curve, auc
 from sklearn.svm import LinearSVC
+from boruta import BorutaPy
+import sys
+
 
 #Global Variables
 
@@ -49,7 +52,23 @@ f2names = ["a10", "a25", "a50", "a75", "aquartile", "amean", "avar", "akurt",
 "perf10", "perf25", "perf50", "perf75", "perfquartile", "perfmean", "perfvar", "perfkurt", "perfskew",
 "f10", "f25", "f50", "f75", "fquartile", "fmean", "fvar", "fkurt", "fskew"]       
 
-print (len(f2names))
+# Starts visdom, the visualizer for graphs
+viz = Visdom()
+
+# Initialize Classifier hyperparameters
+classifiers = [
+    SVC(kernel="linear", C=0.025, probability=True),
+    SVC(gamma=2, C=1, probability=True),
+    GaussianProcessClassifier(1.0 * RBF(1.0)),
+    DecisionTreeClassifier(max_depth=5),
+    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
+    AdaBoostClassifier(),
+    GaussianNB()]
+
+
+#Repeated Cross Validation
+rkf = RepeatedKFold(n_splits=3, n_repeats=2)
+
 
 #This function gets gets all the maps and loads them into a list, can be modified if more maps are added later
 def getFiles(file_path, name):
@@ -102,8 +121,8 @@ def createFeatMat3(afiles, bfiles, dfiles, diff_files, perf_files, f_files):
     @param bfiles = features of bmaps
     @param dfiles = features of dmaps'''
 
-    xtrain = np.zeros((len(afiles),len(afiles[0][3])*6)) #Feature Matrix [a-features, b-features, ddc-features, diff-features, perf-features, f-features]
-    ytrain = np.zeros((len(afiles),),dtype=np.int) #label matrix
+    xtrain = np.zeros((len(afiles),len(afiles[0][3])*6))  # Feature Matrix [a-features, b-features, ddc-features, diff-features, perf-features, f-features]
+    ytrain = np.zeros((len(afiles),),dtype=np.int)  # label matrix
     for i, (a,b,d,e,f,g) in enumerate(zip(afiles,bfiles,dfiles,diff_files, perf_files, f_files)):
         xtrain[i] = np.hstack((a[3], b[3], d[3], e[3], f[3], g[3]))
         ytrain[i] = a[1]
@@ -112,105 +131,92 @@ def createFeatMat3(afiles, bfiles, dfiles, diff_files, perf_files, f_files):
     return xtrain, ytrain
 
 
-#Starts visdom, the visualizer for graphs
-viz = Visdom()
+def runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, allnames):
 
-#Initialize Classifier hyperparameters
-classifiers = [
-    SVC(kernel="linear", C=0.025, probability=True),
-    SVC(gamma=2, C=1, probability=True),
-    GaussianProcessClassifier(1.0 * RBF(1.0)),
-    DecisionTreeClassifier(max_depth=5),
-    RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1),
-    AdaBoostClassifier(),
-    GaussianNB()]
+    cv_grid = GridSearchCV(grid_classifier, tuned_parameters, cv=10, scoring='roc_auc', n_jobs=-1, verbose=True)
+    cv_grid.fit(xtrain, ytrain.ravel())
 
-#Repeated Cross Validation
-rkf = RepeatedKFold(n_splits=3, n_repeats=2)
+    print ("CV_Grid score: ", end = " ") 
+    print (cv_grid.score(xtrain, ytrain.ravel()))
 
-#Get all the Files
-print ("Getting Files containing features of original maps")
-file_path = ['maxminFeat', 'maxminFeatIvim']
-name = ['mm_apad_feat','mm_bpad_feat','mm_dpad_feat', 'mm_diffpad_feat', 'mm_perfpad_feat', 'mm_fpad_feat']
-afiles, bfiles, dfiles, diff_files, perf_files, f_files = getFiles(file_path,name)
+    print ("CV_Grid pest parameters: ", end = " ") 
+    print (cv_grid.best_params_)
 
-print ("Getting files of augmented maps -- Crop 1")
-name = ['cropaug1_alpha_feat','cropaug1_beta_feat','cropaug1_ddc_feat', 'cropaug1_diff_feat', 'cropaug1_perf_feat', 'cropaug1_f_feat']
-c1afiles, c1bfiles, c1dfiles, c1diff_files, c1perf_files, c1f_files = getFiles(file_path,name)
+    b_estimator = cv_grid.best_estimator_
+    b_estimator.fit(xtrain,ytrain.ravel())
 
-print ("Getting files of augmented maps -- Crop 2")
-name = ['cropaug2_alpha_feat','cropaug2_beta_feat','cropaug2_ddc_feat', 'cropaug2_diff_feat', 'cropaug2_perf_feat', 'cropaug2_f_feat']
-c2afiles, c2bfiles, c2dfiles, c2diff_files, c2perf_files, c2f_files = getFiles(file_path,name)
+    b_feats = b_estimator.feature_importances_
+    np.save("bestfeats", [b_feats, allnames])
+    np.save("bestparams", cv_grid.best_params_)
+    viz.bar(X=b_feats,opts=dict(stacked=False,rownames=allnames))
 
-print ("Getting files of augmented maps -- Crop 3")
-name = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
-c3afiles, c3bfiles, c3dfiles, c3diff_files, c3perf_files, c3f_files = getFiles(file_path,name)
+    return b_estimator, cv_grid.best_params_
 
-print ("Getting files of augmented maps -- Original Augmented Rotated")
-name = ['ogaug_alpha_feat','ogaug_beta_feat','ogaug_ddc_feat', 'ogaug_diff_feat', 'ogaug_perf_feat', 'ogaug_f_feat']
-augafiles, augbfiles, augdfiles, augdiff_files, augperf_files, augf_files = getFiles(file_path,name)
+def oneModel(themodel, xtrain, ytrain):
 
-# iterate over datasets
 
-#####Visualisation of different plots for classifiers
-"""
-    Linear_SVM = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='Linear'))
+    tprs = []
+    accscore = []
+    fonescore = []
+    aucs = []
+    mean_fpr = np.linspace(0,1,100)
+    b_feats = []
 
-    RBF_SVM = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='RBF'))
+    for train, test in rkf.split(xtrain):
 
-    Gaussian_Process = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='GP'))
+        txtrain = xtrain[train]
+        tytrain = ytrain[train]
+        txtest = xtrain[test]
+        tytest = ytrain[test]
 
-    Decision_Tree = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='DT'))
+        probz = themodel.fit(txtrain,tytrain.ravel()).predict_proba(txtest)
+        fpr, tpr, thresholds = roc_curve(tytest.ravel(),probz[:,1])
+        tprs.append(interp(mean_fpr,fpr,tpr))
+        tprs[-1][0]=0.0
+        aucs.append(auc(fpr,tpr))
+        ypred = themodel.predict(txtest)
+        fonescore.append(f1_score(tytest.ravel(),ypred))
+        accscore.append(accuracy_score(tytest.ravel(),ypred))
+        b_feats.append(themodel.feature_importances_)
 
-    Random_Forest = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='RF'))
+    return tprs, aucs, mean_fpr, accscore, fonescore, themodel, b_feats
+    
+def visRocCurve(tprs, aucs, mean_fpr, accscore, fonescore, model, allnames, b_feats):
 
-    Neural_Net = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='F1_scores')) 
+    mean_tpr = np.mean(tprs,axis=0)
+    mean_tpr[-1] = 1.0
+    mean_auc = auc(mean_fpr, mean_tpr)
+    std_auc = np.std(aucs)
+    
+    tprs.append(mean_tpr)
+    aucs.append(mean_auc)
+    accscore.append(np.mean(accscore))
+    fonescore.append(np.mean(fonescore))
 
-    AdaBoost = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='Ada'))
 
-    Naive_Bayes = viz.line(
-    Y=np.zeros((1)),
-    X=np.zeros((1)),
-    opts=dict(xlabel='iteration',ylabel='F1_Score',title='NB')) 
-"""
+    print ("ROC CURVES")
 
-#create Feature matrix for the original and augmented files
-print ("Getting feature matrix of original maps")
-xtrain, ytrain = createFeatMat2(afiles, bfiles, dfiles)
+    c = len(tprs) #number of folds
+    r = len(max(tprs,key=len)) #finds the maximum length of an array within a set of arrays
+    X = np.ones((r,c)) #create initial matrix fprs x folds
+    Y = np.ones((r,c))
+    fold_names = []
 
-print ("Getting feature matrix of Crop 1 maps")
-c1xtrain, c1ytrain = createFeatMat2(c1afiles, c1bfiles, c1dfiles)
-print ("Getting feature matrix of Crop 2 maps")
-c2xtrain, c2ytrain = createFeatMat2(c2afiles, c2bfiles, c2dfiles)
-print ("Getting feature matrix of Crop 3 maps")
-c3xtrain, c3ytrain = createFeatMat2(c3afiles, c3bfiles, c3dfiles)
-print ("Getting feature matrix of Augmented orignal maps")
-augxtrain, augytrain = createFeatMat2(augafiles, augbfiles, augdfiles)
+    for i in range(0,c):
+        X[0:len(tprs[i]),i] = mean_fpr
+        Y[0:len(tprs[i]),i] = tprs[i]
+        temp = 'Fold {0:5d} - AUC: {1:.2f} F1: {2:.2f} Acc: {3:.2f}'.format(i, aucs[i], fonescore[i], accscore[i])
+        fold_names.append(temp)
 
-#full augmented feature matrix
-full_aug_xtrain = np.vstack([c1xtrain,c2xtrain,c3xtrain,augxtrain])
-full_aug_ytrain = np.vstack([c1ytrain.reshape(-1,1),c2ytrain.reshape(-1,1),c3ytrain.reshape(-1,1),augytrain.reshape(-1,1)])
+
+    viz.line(X=X,Y=Y,opts=dict(xlabel='fpr',ylabel='tpr',title='ROC',legend=fold_names))
+    
+    #calculate average of feature probabilities and standard deviations
+
+    indices = np.argsort(b_feats[2])
+    temp = np.array(allnames)[indices]
+
+    viz.bar(X=np.sort(b_feats[2]),opts=dict(stacked=False,rownames=temp.tolist()))
 
 def runClassifiers(xtrain, ytrain):
     '''@xtrain feature matrix
@@ -274,6 +280,49 @@ def runClassifiers(xtrain, ytrain):
         
     return accscore, fonescore, std, importances
 
+def visualizeFeat(tfeats, allnames):
+    #@tfeats: a list of feature rankings generated from the boruta package
+
+    mfeats = np.mean(tfeats,axis=0)
+    mstds = np.std(tfeats,axis=0)
+    
+
+    indices = np.argsort(mfeats)
+    temp = np.array(allnames)[indices]
+    mfeats = np.sort(mfeats)
+
+
+    plt.xticks(np.arange(0,len(temp)*2,step=1), temp, rotation='vertical' )
+    plt.ylim(0,50.0)
+
+    oneindices = np.where(mfeats < 2)
+    notoneindices = np.where(mfeats > 2)
+    # scatter valid (not warning) points in blue (c='b')
+    plt.errorbar(x=temp[oneindices], y=mfeats[oneindices], yerr=mstds[indices][oneindices], fmt='bo',ecolor='gold')
+
+    # scatter warning points in red (c='r')
+    plt.errorbar(x=temp[notoneindices], y=mfeats[notoneindices], yerr=mstds[indices][notoneindices], fmt='r+',ecolor='green')
+
+
+    #plt.errorbar(x=temp, y=mfeats, yerr=mstds[indices], fmt='o')
+    plt.axis('scaled')
+
+    # Tweak spacing to prevent clipping of tick-labels
+    #plt.subplots_adjust(bottom=0.5)
+    #plt.xticks(rotation = 'vertical')
+    #plt.show()
+
+
+
+    plt.title("Feature Importance (Lower is Better)")
+    plt.ylabel("Importance")
+    plt.xlabel("Feature Name")
+
+
+
+    plt.show()
+
+
 def visualizeResults(accscore, fonescore, std, importances, allnames, thetitle):
     '''@accscore is the accuracy score of the individual classifiers
         @fonescore is the F1 score of the individual classifiers
@@ -328,217 +377,254 @@ def visualizeResults(accscore, fonescore, std, importances, allnames, thetitle):
     newtitle = 'Accuracy ' + thetitle
     accwin = viz.line(X=X,Y=Y,opts=dict(xlabel='Fold',ylabel='Accuracy',title=newtitle,legend=names))   
 
+# iterate over datasets
 
+#####Visualisation of different plots for classifiers
+"""
+    Linear_SVM = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='Linear'))
 
-print
-print ("Testing Original Data")
+    RBF_SVM = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='RBF'))
 
-atitle = "Original Data"
-accscore, fonescore, std, importances = runClassifiers(xtrain, ytrain)
-visualizeResults(accscore, fonescore, std, importances, fnames, atitle)
+    Gaussian_Process = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='GP'))
 
+    Decision_Tree = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='DT'))
 
-print
-print ("Testing Improvement of Augmented Data")
+    Random_Forest = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='RF'))
 
-#Random Shuffle of Augmentations
+    Neural_Net = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='F1_scores')) 
 
-randindx = np.random.choice(np.arange(len(full_aug_xtrain)),size=int(len(full_aug_xtrain)*0.5),replace=True)
-xtrain = np.vstack((xtrain,full_aug_xtrain[randindx]))
-ytrain = np.vstack((ytrain.reshape(-1,1),full_aug_ytrain[randindx]))
+    AdaBoost = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='Ada'))
 
-#Run Classifier for Augumented Data
-atitle = "Augumented Data"
+    Naive_Bayes = viz.line(
+    Y=np.zeros((1)),
+    X=np.zeros((1)),
+    opts=dict(xlabel='iteration',ylabel='F1_Score',title='NB')) 
+"""
 
-accscore, fonescore, std, importances = runClassifiers(xtrain, ytrain)
-visualizeResults(accscore, fonescore, std, importances, fnames, atitle)
+def runScript():
 
+    #Get all the Files
+    print ("Getting Files containing features of original maps")
+    file_path = ['maxminFeat', 'maxminFeatIvim']
+    name = ['mm_apad_feat','mm_bpad_feat','mm_dpad_feat', 'mm_diffpad_feat', 'mm_perfpad_feat', 'mm_fpad_feat']
+    afiles, bfiles, dfiles, diff_files, perf_files, f_files = getFiles(file_path,name)
 
-### Only DDC maps -- features 20:30 (see create feature matrix) ******************************************** #
-atitle = "DMAPS"
+    print ("Getting files of augmented maps -- Crop 1")
+    name = ['cropaug1_alpha_feat','cropaug1_beta_feat','cropaug1_ddc_feat', 'cropaug1_diff_feat', 'cropaug1_perf_feat', 'cropaug1_f_feat']
+    c1afiles, c1bfiles, c1dfiles, c1diff_files, c1perf_files, c1f_files = getFiles(file_path,name)
 
-accscore, fonescore, std, importances = runClassifiers(xtrain[:,18:27], ytrain)
-visualizeResults(accscore, fonescore, std, importances, fnames[18:27], atitle)
+    print ("Getting files of augmented maps -- Crop 2")
+    name = ['cropaug2_alpha_feat','cropaug2_beta_feat','cropaug2_ddc_feat', 'cropaug2_diff_feat', 'cropaug2_perf_feat', 'cropaug2_f_feat']
+    c2afiles, c2bfiles, c2dfiles, c2diff_files, c2perf_files, c2f_files = getFiles(file_path,name)
 
+    print ("Getting files of augmented maps -- Crop 3")
+    name = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
+    c3afiles, c3bfiles, c3dfiles, c3diff_files, c3perf_files, c3f_files = getFiles(file_path,name)
 
-### Only B maps -- features 10:20 (see create feature matrix) ******************************************** #
-print ("BMAPS")
-atitle = "BMAPS"
-#Run Classifiers
-accscore, fonescore, std, importances = runClassifiers(xtrain[:,9:18], ytrain)
-visualizeResults(accscore, fonescore, std, importances, fnames[9:18], atitle)
+    print ("Getting files of augmented maps -- Original Augmented Rotated")
+    name = ['ogaug_alpha_feat','ogaug_beta_feat','ogaug_ddc_feat', 'ogaug_diff_feat', 'ogaug_perf_feat', 'ogaug_f_feat']
+    augafiles, augbfiles, augdfiles, augdiff_files, augperf_files, augf_files = getFiles(file_path,name)
 
-
-
-# A MAPS ONLY
-atitle = "AMAPS"
-print ("AMAPS")
-accscore, fonescore, std, importances = runClassifiers(xtrain[:,0:9], ytrain)
-visualizeResults(accscore, fonescore, std, importances, fnames[0:9], atitle)
-
-
-##### TEST ON IVIM FEATURES ######
-
-
-#create Feature matrix for the original and augmented files
-print ("Getting feature matrix of original maps")
-xtrain, ytrain = createFeatMat3(afiles, bfiles, dfiles, diff_files, perf_files, f_files)
-
-print ("Getting feature matrix of Crop 1 maps")
-c1xtrain, c1ytrain = createFeatMat3(c1afiles, c1bfiles, c1dfiles, c1diff_files, c1perf_files, c1f_files)
-print ("Getting feature matrix of Crop 2 maps")
-c2xtrain, c2ytrain = createFeatMat3(c2afiles, c2bfiles, c2dfiles, c2diff_files, c2perf_files, c2f_files)
-print ("Getting feature matrix of Crop 3 maps")
-c3xtrain, c3ytrain = createFeatMat3(c3afiles, c3bfiles, c3dfiles, c3diff_files, c3perf_files, c3f_files)
-print ("Getting feature matrix of Augmented orignal maps")
-augxtrain, augytrain = createFeatMat3(augafiles, augbfiles, augdfiles, augdiff_files, augperf_files, augf_files)
-
-#full augmented feature matrix
-full_aug_xtrain = np.vstack([c1xtrain,c2xtrain,c3xtrain,augxtrain])
-full_aug_ytrain = np.vstack([c1ytrain.reshape(-1,1),c2ytrain.reshape(-1,1),c3ytrain.reshape(-1,1),augytrain.reshape(-1,1)])
-
-#Random Shuffle of Augmentations
-
-randindx = np.random.choice(np.arange(len(full_aug_xtrain)),size=int(len(full_aug_xtrain)*0.5),replace=True)
-
-xtrain = np.vstack((xtrain,full_aug_xtrain[randindx]))
-ytrain = np.vstack((ytrain.reshape(-1,1),full_aug_ytrain[randindx]))
-
-atitle = "Org and IVIM Maps"
-accscore, fonescore, std, importances = runClassifiers(xtrain, ytrain)
-visualizeResults(accscore, fonescore, std, importances, f2names, atitle)
-
-##################################################Test Individual IVIM MAPS##################################################
-
-
-print ("DIFF MMAPS")
-print
-atitle = "DIFF"
-accscore, fonescore, std, importances = runClassifiers(xtrain[:,27:36], ytrain)
-visualizeResults(accscore, fonescore, std, importances, f2names[27:36], atitle)
-
-
-# ###### IVIM PERF:
-print ("PERF MMAPS")
-print
-atitle = "PERF"
-accscore, fonescore, std, importances = runClassifiers(xtrain[:,36:45], ytrain)
-visualizeResults(accscore, fonescore, std, importances, f2names[36:45], atitle)
-
-# ### IVIM FMAPS
-
-print ("F MAPS ")
-print
-atitle = "F_MAPS"
-accscore, fonescore, std, importances = runClassifiers(xtrain[:,45:], ytrain)
-visualizeResults(accscore, fonescore, std, importances, f2names[45:], atitle)
-
-def runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, allnames):
-
-    cv_grid = GridSearchCV(grid_classifier, tuned_parameters, cv=10, scoring='roc_auc', n_jobs=-1, verbose=True)
-    cv_grid.fit(xtrain, ytrain.ravel())
-
-    print ("CV_Grid score: ", end = " ") 
-    print (cv_grid.score(xtrain, ytrain.ravel()))
-
-    print ("CV_Grid pest parameters: ", end = " ") 
-    print (cv_grid.best_params_)
-
-    b_estimator = cv_grid.best_estimator_
-    b_estimator.fit(xtrain,ytrain.ravel())
-
-    b_feats = b_estimator.feature_importances_
-    np.save("bestfeats", [b_feats, allnames])
-    np.save("bestparams", cv_grid.best_params_)
-    viz.bar(X=b_feats,opts=dict(stacked=False,rownames=allnames))
-
-    return b_estimator, cv_grid.best_params_
-
-def oneModel(themodel, xtrain, ytrain):
-
-
-    tprs = []
-    accscore = []
-    fonescore = []
-    aucs = []
-    mean_fpr = np.linspace(0,1,100)
-
-    for train, test in rkf.split(xtrain):
-
-        txtrain = xtrain[train]
-        tytrain = ytrain[train]
-        txtest = xtrain[test]
-        tytest = ytrain[test]
-
-        probz = themodel.fit(txtrain,tytrain.ravel()).predict_proba(txtest)
-        fpr, tpr, thresholds = roc_curve(tytest.ravel(),probz[:,1])
-        tprs.append(interp(mean_fpr,fpr,tpr))
-        tprs[-1][0]=0.0
-        aucs.append(auc(fpr,tpr))
-        ypred = themodel.predict(txtest)
-        fonescore.append(f1_score(tytest.ravel(),ypred))
-        accscore.append(accuracy_score(tytest.ravel(),ypred))
-
-    return tprs, aucs, mean_fpr, accscore, fonescore, themodel
     
-def visRocCurve(tprs, aucs, mean_fpr, accscore, fonescore, model, allnames):
+    '''
+    #create Feature matrix for the original and augmented files
+    print ("Getting feature matrix of original maps")
+    xtrain, ytrain = createFeatMat2(afiles, bfiles, dfiles)
 
-    mean_tpr = np.mean(tprs,axis=0)
-    mean_tpr[-1] = 1.0
-    mean_auc = auc(mean_fpr, mean_tpr)
-    std_auc = np.std(aucs)
+    print ("Getting feature matrix of Crop 1 maps")
+    c1xtrain, c1ytrain = createFeatMat2(c1afiles, c1bfiles, c1dfiles)
+    print ("Getting feature matrix of Crop 2 maps")
+    c2xtrain, c2ytrain = createFeatMat2(c2afiles, c2bfiles, c2dfiles)
+    print ("Getting feature matrix of Crop 3 maps")
+    c3xtrain, c3ytrain = createFeatMat2(c3afiles, c3bfiles, c3dfiles)
+    print ("Getting feature matrix of Augmented orignal maps")
+    augxtrain, augytrain = createFeatMat2(augafiles, augbfiles, augdfiles)
+
+    #full augmented feature matrix
+    full_aug_xtrain = np.vstack([c1xtrain,c2xtrain,c3xtrain,augxtrain])
+    full_aug_ytrain = np.vstack([c1ytrain.reshape(-1,1),c2ytrain.reshape(-1,1),c3ytrain.reshape(-1,1),augytrain.reshape(-1,1)])
+
+    print
+    print ("Testing Original Data")
+
+    atitle = "Original Data"
+    accscore, fonescore, std, importances = runClassifiers(xtrain, ytrain)
+    visualizeResults(accscore, fonescore, std, importances, fnames, atitle)
+
+
+    print
+    print ("Testing Improvement of Augmented Data")
+
+    #Random Shuffle of Augmentations
+
+    randindx = np.random.choice(np.arange(len(full_aug_xtrain)),size=int(len(full_aug_xtrain)*0.5),replace=True)
+    xtrain = np.vstack((xtrain,full_aug_xtrain[randindx]))
+    ytrain = np.vstack((ytrain.reshape(-1,1),full_aug_ytrain[randindx]))
+
+    #Run Classifier for Augumented Data
+    atitle = "Augumented Data"
+
+    accscore, fonescore, std, importances = runClassifiers(xtrain, ytrain)
+    visualizeResults(accscore, fonescore, std, importances, fnames, atitle)
+
+
+    ### Only DDC maps -- features 20:30 (see create feature matrix) ******************************************** #
+    atitle = "DMAPS"
+
+    accscore, fonescore, std, importances = runClassifiers(xtrain[:,18:27], ytrain)
+    visualizeResults(accscore, fonescore, std, importances, fnames[18:27], atitle)
+
+
+    ### Only B maps -- features 10:20 (see create feature matrix) ******************************************** #
+    print ("BMAPS")
+    atitle = "BMAPS"
+    #Run Classifiers
+    accscore, fonescore, std, importances = runClassifiers(xtrain[:,9:18], ytrain)
+    visualizeResults(accscore, fonescore, std, importances, fnames[9:18], atitle)
+
+
+
+    # A MAPS ONLY
+    atitle = "AMAPS"
+    print ("AMAPS")
+    accscore, fonescore, std, importances = runClassifiers(xtrain[:,0:9], ytrain)
+    visualizeResults(accscore, fonescore, std, importances, fnames[0:9], atitle)
+
+
+    '''
+
     
-    tprs.append(mean_tpr)
-    aucs.append(mean_auc)
-    accscore.append(np.mean(accscore))
-    fonescore.append(np.mean(fonescore))
+
+    ##### TEST ON IVIM FEATURES ######
+
+    
+    #create Feature matrix for the original and augmented files
+    print ("Getting feature matrix of original maps")
+    xtrain, ytrain = createFeatMat3(afiles, bfiles, dfiles, diff_files, perf_files, f_files)
+
+    print ("Getting feature matrix of Crop 1 maps")
+    c1xtrain, c1ytrain = createFeatMat3(c1afiles, c1bfiles, c1dfiles, c1diff_files, c1perf_files, c1f_files)
+    print ("Getting feature matrix of Crop 2 maps")
+    c2xtrain, c2ytrain = createFeatMat3(c2afiles, c2bfiles, c2dfiles, c2diff_files, c2perf_files, c2f_files)
+    print ("Getting feature matrix of Crop 3 maps")
+    c3xtrain, c3ytrain = createFeatMat3(c3afiles, c3bfiles, c3dfiles, c3diff_files, c3perf_files, c3f_files)
+    print ("Getting feature matrix of Augmented orignal maps")
+    augxtrain, augytrain = createFeatMat3(augafiles, augbfiles, augdfiles, augdiff_files, augperf_files, augf_files)
+
+    #full augmented feature matrix
+    full_aug_xtrain = np.vstack([c1xtrain,c2xtrain,c3xtrain,augxtrain])
+    full_aug_ytrain = np.vstack([c1ytrain.reshape(-1,1),c2ytrain.reshape(-1,1),c3ytrain.reshape(-1,1),augytrain.reshape(-1,1)])
+
+    #Random Shuffle of Augmentations
+
+    randindx = np.random.choice(np.arange(len(full_aug_xtrain)),size=int(len(full_aug_xtrain)*0.5),replace=True)
+
+    xtrain = np.vstack((xtrain,full_aug_xtrain[randindx]))
+    ytrain = np.vstack((ytrain.reshape(-1,1),full_aug_ytrain[randindx]))
+    
+
+    '''
+    atitle = "Org and IVIM Maps"
+    accscore, fonescore, std, importances = runClassifiers(xtrain, ytrain)
+    visualizeResults(accscore, fonescore, std, importances, f2names, atitle)
+
+    ##################################################Test Individual IVIM MAPS##################################################
 
 
-    print ("ROC CURVES")
-
-    c = len(tprs) #number of folds
-    r = len(max(tprs,key=len)) #finds the maximum length of an array within a set of arrays
-    X = np.ones((r,c)) #create initial matrix fprs x folds
-    Y = np.ones((r,c))
-    fold_names = []
-
-    for i in range(0,c):
-        X[0:len(tprs[i]),i] = mean_fpr
-        Y[0:len(tprs[i]),i] = tprs[i]
-        temp = 'Fold {0:5d} - AUC: {1:.2f} F1: {2:.2f} Acc: {3:.2f}'.format(i, aucs[i], fonescore[i], accscore[i])
-        fold_names.append(temp)
+    print ("DIFF MMAPS")
+    print
+    atitle = "DIFF"
+    accscore, fonescore, std, importances = runClassifiers(xtrain[:,27:36], ytrain)
+    visualizeResults(accscore, fonescore, std, importances, f2names[27:36], atitle)
 
 
-    viz.line(X=X,Y=Y,opts=dict(xlabel='fpr',ylabel='tpr',title='ROC',legend=fold_names))
-    b_feats = model.feature_importances_
+    # ###### IVIM PERF:
+    print ("PERF MMAPS")
+    print
+    atitle = "PERF"
+    accscore, fonescore, std, importances = runClassifiers(xtrain[:,36:45], ytrain)
+    visualizeResults(accscore, fonescore, std, importances, f2names[36:45], atitle)
 
-    indices = np.argsort(b_feats)
-    temp = np.array(allnames)[indices]
+    # ### IVIM FMAPS
 
-    viz.bar(X=np.sort(b_feats),opts=dict(stacked=False,rownames=temp.tolist()))
-
-
-# ### Pipeline for GridSearch 
-
-
-# #****** GRID SEARCH FOR OPTIMAL PARAMATERS for Gradient Boost Classifier   ********
-# print ("GRID SEARCH")
-
-# """ tuned_parameters = {"loss": ["deviance"], "learning_rate": [0.01, .025, .05, .075, 0.1, 0.15, 0.2], "min_samples_split": np.linspace(0.1,0.5,8),"min_samples_leaf": np.linspace(0.1,0.5,8),
-# "max_depth": [3,5,8],"max_features":["log2", "sqrt"],"criterion": ["friedman_mse"],"subsample": [0.5, 0.618, 0.8, 0.85, 1.0], "n_estimators":[100,250,500]}
-
-#grid_classifier = GradientBoostingClassifier()
-
-#the_estimator, after_tuned = runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, f2names):
-
-#*******************
+    print ("F MAPS ")
+    print
+    atitle = "F_MAPS"
+    accscore, fonescore, std, importances = runClassifiers(xtrain[:,45:], ytrain)
+    visualizeResults(accscore, fonescore, std, importances, f2names[45:], atitle)
 
 
-after_tuned = {'min_samples_leaf': 0.15714285714285714, 'learning_rate': 0.2, 'loss': 'deviance', 'max_features': 'sqrt', 'subsample': 0.8, 'max_depth': 8, 'min_samples_split': 0.1, 
-'criterion': 'friedman_mse', 'n_estimators': 100}
+    # ### Pipeline for GridSearch 
 
-model = GradientBoostingClassifier(**after_tuned)
-tprs, aucs, mean_fpr, accscore, fonescore, model = oneModel(model, xtrain, ytrain)
-visRocCurve(tprs, aucs, mean_fpr, accscore, fonescore, model, f2names)
 
-print ("COMPLETED WOO")
+    # #****** GRID SEARCH FOR OPTIMAL PARAMATERS for Gradient Boost Classifier   ********
+    # print ("GRID SEARCH")
+
+    # """ tuned_parameters = {"loss": ["deviance"], "learning_rate": [0.01, .025, .05, .075, 0.1, 0.15, 0.2], "min_samples_split": np.linspace(0.1,0.5,8),"min_samples_leaf": np.linspace(0.1,0.5,8),
+    # "max_depth": [3,5,8],"max_features":["log2", "sqrt"],"criterion": ["friedman_mse"],"subsample": [0.5, 0.618, 0.8, 0.85, 1.0], "n_estimators":[100,250,500]}
+
+    #grid_classifier = GradientBoostingClassifier()
+
+    #the_estimator, after_tuned = runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, f2names):
+
+    #*******************
+    '''
+
+    after_tuned = {'min_samples_leaf': 0.15714285714285714, 'learning_rate': 0.2, 'loss': 'deviance', 'max_features': 'sqrt', 'subsample': 0.8, 'max_depth': 8, 'min_samples_split': 0.1, 
+    'criterion': 'friedman_mse', 'n_estimators': 100}
+
+    model = GradientBoostingClassifier(**after_tuned)
+    tprs, aucs, mean_fpr, accscore, fonescore, model, b_feats = oneModel(model, xtrain, ytrain)
+
+    modulename = 'boruta' 
+    if modulename not in sys.modules:
+        #print ('You have not imported the {} module for feature selection').format(modulename)
+        print ("package not installed, install BorutaPy")
+    else:
+        bro_feats = []
+        print ("Feature Importance")
+        after_tuned = {'max_depth': 8, 'n_estimators': 100}
+        for i in range(0,100):
+            borutamodel = GradientBoostingClassifier(**after_tuned)
+            model_feat = BorutaPy(borutamodel,perc=80,max_iter=150,verbose=2)
+            model_feat.fit(xtrain, ytrain.ravel())
+            bro_feats.append(model_feat.ranking_)
+         
+        #visualize best features from boruta package
+        visualizeFeat(bro_feats, f2names)
+
+        #print (model_feat.support_weak_)
+    
+
+    #visRocCurve(tprs, aucs, mean_fpr, accscore, fonescore, model, f2names, b_feats)
+
+
+
+
+
+    print ("COMPLETED WOO")
+
+runScript()
+
+print ("JELLO")
