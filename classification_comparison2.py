@@ -45,12 +45,12 @@ fnames = ["a10", "a25", "a50", "a75", "aquartile", "amean", "avar", "akurt",
 "askew",  "b10", "b25", "b50", "b75", "bquartile", "bmean", "bvr", "bkurt", 
 "bskew", "d10", "d25", "d50", "d75", "dquartile","dmean",  "dvra", "dkurt", "dskew"]         
 
-f2names = ["a10", "a25", "a50", "a75", "aquartile", "amean", "avar", "akurt", 
-"askew",  "b10", "b25", "b50", "b75", "bquartile", "bmean", "bvar", "bkurt", 
-"bskew", "d10", "d25", "d50", "d75", "dquartile","dmean", "dvar", "dkurt", "dskew",
-"diff10", "diff25", "diff50", "diff75", "diffquartile", "diffmean", "diffvar", "diffkurt", "diffskew",
-"perf10", "perf25", "perf50", "perf75", "perfquartile", "perfmean", "perfvar", "perfkurt", "perfskew",
-"f10", "f25", "f50", "f75", "fquartile", "fmean", "fvar", "fkurt", "fskew"]       
+f2names = ["Am_10", "Am_25", "Am_50", "Am_75", "Am_quartile", "Am_mean", "Am_var", "Am_kurt", 
+"A_skew",  "Bm_10", "Bm_25", "Bm_50", "Bm_75", "Bm_quartile", "Bm_mean", "Bm_var", "Bm_kurt", 
+"Bm_skew", "Dm_10", "Dm_25", "Dm_50", "Dm_75", "Dm_quartile", "Dm_mean", "Dm_var", "Dm_kurt", "Dm_skew",
+"Ddiff_10", "Ddiff_25", "Ddiff_50", "Ddiff_75", "Ddiff_quartile", "Ddiff_mean", "Ddiff_var", "Ddiff_kurt", "Ddiff_skew",
+"Perf_10", "Perf_25", "Perf_50", "Perf_75", "Perf_quartile", "Perf_mean", "Perf_var", "Perf_kurt", "Perf_skew",
+"Fm_10", "Fm_25", "Fm_50", "Fm_75", "Fm_quartile", "Fm_mean", "Fm_var", "Fm_kurt", "Fm_skew"]       
 
 # Starts visdom, the visualizer for graphs
 viz = Visdom()
@@ -290,34 +290,32 @@ def visualizeFeat(tfeats, allnames):
     indices = np.argsort(mfeats)
     temp = np.array(allnames)[indices]
     mfeats = np.sort(mfeats)
-
-
-    plt.xticks(np.arange(0,len(temp)*2,step=1), temp, rotation='vertical' )
-    plt.ylim(0,50.0)
-
     oneindices = np.where(mfeats < 2)
     notoneindices = np.where(mfeats > 2)
+
+    #Features on x-axis
+    #plt.xticks(np.arange(0,len(temp)*2,step=1), temp, rotation='vertical' )
+    #plt.ylim(0,50.0)
+
     # scatter valid (not warning) points in blue (c='b')
-    plt.errorbar(x=temp[oneindices], y=mfeats[oneindices], yerr=mstds[indices][oneindices], fmt='bo',ecolor='gold')
+    #plt.errorbar(x=temp[oneindices], y=mfeats[oneindices], yerr=mstds[indices][oneindices], fmt='bo',ecolor='gold')
 
     # scatter warning points in red (c='r')
-    plt.errorbar(x=temp[notoneindices], y=mfeats[notoneindices], yerr=mstds[indices][notoneindices], fmt='r+',ecolor='green')
+    #plt.errorbar(x=temp[notoneindices], y=mfeats[notoneindices], yerr=mstds[indices][notoneindices], fmt='r+',ecolor='green')
 
 
-    #plt.errorbar(x=temp, y=mfeats, yerr=mstds[indices], fmt='o')
+
+    #Features on y-axis
+    plt.yticks(np.arange(0,len(temp)*2,step=1), temp)
+    plt.xlim(0,50.0)
+    plt.errorbar(x=mfeats[oneindices], y=temp[oneindices], xerr=mstds[indices][oneindices], fmt='bo',ecolor='gold')
+    plt.errorbar(x=mfeats[notoneindices], y=temp[notoneindices], xerr=mstds[indices][notoneindices], fmt='r+',ecolor='green')
+
+    #Must go after, otherwise it does not work, and labels overlap with each other
     plt.axis('scaled')
-
-    # Tweak spacing to prevent clipping of tick-labels
-    #plt.subplots_adjust(bottom=0.5)
-    #plt.xticks(rotation = 'vertical')
-    #plt.show()
-
-
-
     plt.title("Feature Importance (Lower is Better)")
     plt.ylabel("Importance")
     plt.xlabel("Feature Name")
-
 
 
     plt.show()
@@ -607,11 +605,14 @@ def runScript():
         after_tuned = {'max_depth': 8, 'n_estimators': 100}
         for i in range(0,100):
             borutamodel = GradientBoostingClassifier(**after_tuned)
-            model_feat = BorutaPy(borutamodel,perc=80,max_iter=150,verbose=2)
+            model_feat = BorutaPy(borutamodel,perc=80,max_iter=500,verbose=2)
             model_feat.fit(xtrain, ytrain.ravel())
             bro_feats.append(model_feat.ranking_)
+            print ("Iterations %d"%i)
          
         #visualize best features from boruta package
+        file_name = 'best_feats_list_{}.npy'.format(np.random.randint(0,200))
+        np.save(file_name,bro_feats)
         visualizeFeat(bro_feats, f2names)
 
         #print (model_feat.support_weak_)
