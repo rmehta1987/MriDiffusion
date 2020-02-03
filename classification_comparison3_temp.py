@@ -605,44 +605,47 @@ def visualizeResults2(accscore, fonescore, tprs, aucs, allnames, thetitle):
 
     print ("Calculating F1")
 
-    # Average F1 Score for every classifier
-    #avg_f1 = [np.mean(scores) for scores in fonescore]
-    #avg_acc = [np.mean(scores) for scores in fonescore]
-    #avg_auc = [np.mean(scores) for scores in fonescore]
-    print (sns.utils.ci(aucs[-1],which=95))
-    print (sns.utils.ci(fonescore[-1],which=95))
-    print (sns.utils.ci(accscore[-1],which=95))
     sns.set()
     f1 = plt.figure(1)
-    ax = sns.boxplot(data=fonescore,palette="vlag",showfliers=False)
+    temp = [fonescore[0], fonescore[5], fonescore[6]]
+    ax = sns.boxplot(data=temp,palette="vlag",showfliers=False)
     #sns.swarmplot(data=fonescore, color=".2", alpha=0.3)
-    ax.set(xticklabels=c_names)
+    ax.set(xticklabels=[10, 20, 30])
     ax.set_xticklabels(ax.get_xticklabels(),rotation=90)
-    ax.set_title('F1 Score of all Classifiers')
-    print ("Accuracy")
-    f2 = plt.figure(2)
-    ax2 = sns.boxplot(data=accscore,palette="vlag",showfliers=False)
-    #sns.swarmplot(data=accscore, color=".2", alpha=0.3)
-    ax2.set(xticklabels=c_names)
-    ax2.set_xticklabels(ax2.get_xticklabels(),rotation=90)
-    ax2.set_title('Accuracy of all Classifiers')
-    print ("AUC")
-    f3 = plt.figure(3)
-    ax3 = sns.boxplot(data=aucs,palette="vlag",showfliers=False)
-    #sns.swarmplot(data=aucs, color=".2", alpha=0.3)
-    ax3.set(xticklabels=c_names)
-    ax3.set_xticklabels(ax3.get_xticklabels(),rotation=90)
-    ax3.set_title('Area Under Curve of all Classifiers')
+    ax.set_title('Hamming Distance')
+    
+    f1.savefig("Hamming_Distance.png" ,bbox_inches='tight')
 
-    f1.savefig("F1_Classifier_test2.svg" ,bbox_inches='tight')
-    f2.savefig("Acc_Classifier_test2.svg",bbox_inches='tight')
-    f3.savefig("AUC_Classifier_test2.svg",bbox_inches='tight')
 
     #f4 = plt.figure(4)
     #ax4 = sns.lineplot(data=tprs, hue="region", style="event", markers=True, dashes=False)
     
     #plt.show()
+    '''
+    for i,scores in enumerate(fonescore):
+        #viz.line(X=np.arange(1,len(scores)+1),Y=scores,name=names[i],win=orgf1score,opts=dict(xlabel='Fold',ylabel='F1',title='{} Original F1 score'.format(names[i])))
+        #viz.line(X=np.arange(1,len(scores)+1),Y=scores,name=names[i],win=orgf1score,opts=dict(xlabel='Fold',ylabel='F1'),update='append')
+        print ("Classifier name and F1 Score: %s : "%(names[i]), end = " ")
+        print (scores) 
 
+    print ("Accuracy Scores")
+
+    for i,scores in enumerate(accscore):
+        #viz.line(X=np.arange(1,len(scores)+1),Y=scores,name=names[i],win=accwin, opts=dict(xlabel='Fold',ylabel='F1',title='{} Original Accuracy score'.format(names[i])))
+        #viz.line(X=np.arange(1,len(scores)+1),Y=scores,name=names[i],win=accwin, opts=dict(xlabel='Fold',ylabel='Accuracy'),update='append')
+        #viz.line(X=np.arange(1,len(scores)+1).reshape(-1,1),Y=np.array(scores).reshape(-1,1),name=names[i],win=accwin, opts=dict(xlabel='Fold',ylabel='Accuracy',legend=[names[i]]), update='append')
+        print ("Classifier name and Accuracy Score: %s : "%(names[i]), end=" ")
+        print (scores) 
+    
+    #Stack Visualizations of each accuracy
+    r = len(accscore) #number of classifiers
+    c = len(accscore[0])#number of folds 
+    X = np.tile(np.arange(1,c+1).reshape(-1,1),(1,r))
+    Y = np.ones((c,r))
+    Y = Y*np.array(accscore).transpose()
+    newtitle = 'Accuracy ' + thetitle
+    accwin = viz.line(X=X,Y=Y,opts=dict(xlabel='Fold',ylabel='Accuracy',title=newtitle,legend=names))   
+    '''
 def visualizeHists(hist40, hist60, hist80, hist100, hist120):
     '''
     Args:
@@ -1666,7 +1669,7 @@ def runTemp():
 
 #runSpecificFeats()
 
-#runTemp()
+runTemp()
 
 """ # Generate random classification example: https://stackoverflow.com/questions/25497402/adding-y-x-to-a-matplotlib-scatter-plot-if-i-havent-kept-track-of-all-the-data
 from sklearn.datasets import make_blobs

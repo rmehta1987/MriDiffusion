@@ -34,6 +34,70 @@ import matplotlib.pyplot as plt
 
 
 #This function is hard-coded, as we want to to know the individual maps extracted from the Mat Files
+def createFiles_not_masked(filepath):
+    '''@foldernames is the name of the folder where maps will be saved and should be 
+        sorted as [amaps, bmaps, ddc-maps, diffmaps, perfmaps, fmaps]'''
+    '''Directors are in current directory, model_results and ROI, 
+    finds corresponding slices and then creates a file 
+    with the ROI parameter map and the label [ [parameter map] [label]] '''
+
+    # get files and sort them by name
+    adict = {}
+    bdict = {}
+    ddict = {}
+    idiff_dict = {}
+    iperf_dict = {}
+    if_dict = {}
+    modelFiles = sorted(glob.glob('%s/*.mat'%(filepath[0]))) #A, B, DDC maps
+    ivimFiles = sorted(glob.glob('%s/*ivim*.mat'%(filepath[1]))) #IVIM Files 
+    rois = sorted(glob.glob('%s/*.mat'%(filepath[2])))
+    #  patientset = set() #store patient names, since patients may have multiple slices
+    for i in range(0,len(modelFiles)):
+        matmodel = sio.loadmat(modelFiles[i])
+        ivimmodel = sio.loadmat(ivimFiles[i])
+        matIdiff = ivimmodel['ivim_Ddiff']
+        matIperf = ivimmodel['ivim_Dperf']
+        matIf = ivimmodel['ivim_f']
+        matalpha = matmodel['mlf_alpha']
+        matbeta = matmodel['mlf_beta']
+        matddc = matmodel['mlf_DDC']
+        matroi = sio.loadmat(rois[i])['ROI']
+        # make sure patient file names are same
+        regPatient = re.compile(r"(?=P)(.*?)(?=_)")
+        patientname = regPatient.search(modelFiles[i]).group()
+        patientname2 = regPatient.search(ivimFiles[i]).group()
+        if patientname in rois[i] and patientname2 in rois[i]:
+
+            indexRoi = np.transpose(np.nonzero(matroi)) # get get index of slice where ROI exists
+            
+            # check if multiple ROIS
+            uniqueInd = np.unique(indexRoi[:,2])
+             #Assumes all ROIs correspond to one label (hard-coded for patient 15) which is a benign patient
+            for j in range(0,len(uniqueInd)):
+                #need to make sure all ROI masks are binary 0/1
+                tempROI = matroi[:,:,uniqueInd[j]]
+                tempROI = (tempROI > 0.5).astype(int)
+
+                mask_alpha = np.multiply(matalpha[:,:,uniqueInd[j]],tempROI)
+                mask_beta = np.multiply(matbeta[:,:,uniqueInd[j]],tempROI)
+                mask_ddc = np.multiply(matddc[:,:,uniqueInd[j]],tempROI)
+                mask_idiff = np.multiply(matIdiff[:,:,uniqueInd[j]],tempROI)
+                mask_iperf = np.multiply(matIperf[:,:,uniqueInd[j]],tempROI)
+                mask_if = np.multiply(matIf[:,:,uniqueInd[j]],tempROI)
+                allMaps = [matalpha[:,:,uniqueInd[j]], matbeta[:,:,uniqueInd[j]], matddc[:,:,uniqueInd[j]], matIdiff[:,:,uniqueInd[j]],
+                             matIperf[:,:,uniqueInd[j]], matIf[:,:,uniqueInd[j]]]
+                allMasks = [mask_alpha, mask_beta, mask_ddc, mask_idiff, mask_iperf, mask_if]
+                finalname = "%s_%d"%(patientname,j)
+                adict['%s_%s_%d'%(maps,patientname,j)]=[allMaps, allMasks, tempROI, finalname]
+                
+                
+                #patientset.add(patientname)
+    np.save('allMaps', adict)
+    return adict
+
+
+
+#This function is hard-coded, as we want to to know the individual maps extracted from the Mat Files
 def createFiles(filepath, foldernames):
     '''@foldernames is the name of the folder where maps will be saved and should be 
         sorted as [amaps, bmaps, ddc-maps, diffmaps, perfmaps, fmaps]'''
@@ -116,6 +180,71 @@ def createFiles(filepath, foldernames):
                     #patientset.add(patientname)
 
     return adict, bdict, ddict, idiff_dict, iperf_dict, if_dict
+
+def createFiles2(filepath, foldernames):
+    '''@This function is for only loading ivim files, foldernames is the name of the folder where maps will be saved and should be 
+        sorted as [amaps, bmaps, ddc-maps, diffmaps, perfmaps, fmaps]'''
+    '''Directors are in current directory, model_results and ROI, 
+    finds corresponding slices and then creates a file 
+    with the ROI parameter map and the label [ [parameter map] [label]] '''
+
+    # get files and sort them by name
+    idiff_dict = {}
+    iperf_dict = {}
+    if_dict = {}
+    thecsv = filepath[2]+'FROC_Patient_Diagnosis.csv'
+    ivimFiles = sorted(glob.glob('%s/*ivim*.mat'%(filepath[0]))) #IVIM Files 
+    rois = sorted(glob.glob('%s/*.mat'%(filepath[1])))
+    csvlabels = pd.read_csv(thecsv)
+    #patientset = set() #store patient names, since patients may have multiple slices
+    for i in range(0,len(ivimFiles)):
+        
+        ivimmodel = sio.loadmat(ivimFiles[i])
+        matIdiff = ivimmodel['ivim_Ddiff']
+        matIperf = ivimmodel['ivim_Dperf']
+        matIf = ivimmodel['ivim_f']
+        matroi = sio.loadmat(rois[i])['ROI']
+        # make sure patient file names are same
+        regPatient = re.compile(r"(?=P)(.*?)(?=_)")
+        
+        patientname2 = regPatient.search(ivimFiles[i]).group()
+        if patientname2 in rois[i]:
+
+            indexRoi = np.transpose(np.nonzero(matroi)) # get get index of slice where ROI exists
+            
+            # check if multiple ROIS
+            uniqueInd = np.unique(indexRoi[:,2])
+             #Assumes all ROIs correspond to one label (hard-coded for patient 15) which is a benign patient
+            for j in range(0,len(uniqueInd)):
+                #need to make sure all ROI masks are binary 0/1
+                tempROI = matroi[:,:,uniqueInd[j]]
+                tempROI = (tempROI > 0.5).astype(int)
+
+                if j == 1 and i == 14:
+                    mask_idiff = np.multiply(matIdiff[:,:,uniqueInd[j]],tempROI)
+                    mask_iperf = np.multiply(matIperf[:,:,uniqueInd[j]],tempROI)
+                    mask_if = np.multiply(matIf[:,:,uniqueInd[j]],tempROI)
+                    #np.save('masks/unnorm_mask_alpha_%s_%d'%(patientname,j),[mask_alpha, 0])
+                    #np.save('masks/unnorm_mask_beta_%s_%d'%(patientname,j),[mask_beta, 0])
+                    #np.save('masks/unnorm_mask_ddc_%s_%d'%(patientname,j),[mask_ddc, 0])
+                    idiff_dict['%s_%s_%d'%(foldernames[0],patientname2,j)] = [mask_idiff, 0, patientname2]
+                    iperf_dict['%s_%s_%d'%(foldernames[1],patientname2,j)] = [mask_iperf, 0, patientname2]
+                    if_dict['%s_%s_%d'%(foldernames[2],patientname2,j)] = [mask_if, 0, patientname2]
+                    #patientset.add(patientname)
+                else:
+                    mask_idiff = np.multiply(matIdiff[:,:,uniqueInd[j]],tempROI)
+                    mask_iperf = np.multiply(matIperf[:,:,uniqueInd[j]],tempROI)
+                    mask_if = np.multiply(matIf[:,:,uniqueInd[j]],tempROI)
+                    #np.save('masks/unnorm_mask_alpha_%s_%d'%(patientname,j),[mask_alpha, csvlabels['biopsy_binary'][i]])
+                    #np.save('masks/unnorm_mask_beta_%s_%d'%(patientname,j),[mask_beta, csvlabels['biopsy_binary'][i]])
+                    #np.save('masks/unnorm_mask_ddc_%s_%d'%(patientname,j),[mask_ddc, csvlabels['biopsy_binary'][i]])
+
+                    idiff_dict['%s_%s_%d'%(foldernames[0],patientname2,j)] = [mask_idiff, csvlabels['biopsy_binary'][i], patientname2]
+                    iperf_dict['%s_%s_%d'%(foldernames[1],patientname2,j)] = [mask_iperf, csvlabels['biopsy_binary'][i], patientname2]
+                    if_dict['%s_%s_%d'%(foldernames[2],patientname2,j)] = [mask_if, csvlabels['biopsy_binary'][i], patientname2]
+                    #patientset.add(patientname)
+
+    return idiff_dict, iperf_dict, if_dict
 
 def pad_image(img, pad_t, pad_r, pad_b, pad_l):
     """Add padding of zeroes to an image.
@@ -356,6 +485,33 @@ def loadexisting(file_path, name):
 
     return lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files
 
+#This function is slightly hard-coded as we want a list to identify individual maps, in this case we are assuming 3 different diffusion maps
+def loadexisting2(file_path, name):
+    '''@file_path is where the files are located
+        @name is the names of the individual files, in this case we are assuming names are sorted as [diffmaps, perfmaps, fmaps]'''
+    difffiles = sorted(glob.glob('%s/*%s.npy'%(file_path,name[0])))
+    perffiles = sorted(glob.glob('%s/*%s.npy'%(file_path,name[1])))
+    ffiles = sorted(glob.glob('%s/*%s.npy'%(file_path,name[2])))
+
+    lafiles = []
+    lbfiles = []
+    ldfiles = []
+    ldiff_files = []
+    lperf_files = []
+    lf_files = []
+
+    for i, (e,f,g) in enumerate(zip(difffiles,perffiles,ffiles)):
+       
+        tmap, label, patientname = np.load(e)
+        ldiff_files.append([tmap, label, patientname])
+        tmap = np.load(f)[0]
+        lperf_files.append([tmap, label, patientname])
+        tmap = np.load(g)[0]
+        lf_files.append([tmap, label, patientname])
+
+
+    return ldiff_files, lperf_files, lf_files
+
 def savewithPatient(file_path, name, allfiles):
         
     for  i, thefiles in enumerate(allfiles):
@@ -377,7 +533,7 @@ def saveDicts(alldicts, name):
 def runProcess():
 
     #-----Create Files from Masks and Original MRI slices
-    filepath = ['model_results','ivim', 'ROIS', '']
+    filepath = ['model_results','newIVIM', 'ROIS', '']
     filenames = ['mmasks/mask_alpha_','mmasks/mask_beta_','mmasks/mask_ddc_','mmasks/mask_diff_','mmasks/mask_perf_','mmasks/mask_f_']
     adict, bdict, ddict, diff_dict, perf_dict, f_dict = createFiles(filepath,filenames)
     print ("created Files")
@@ -429,6 +585,48 @@ def runProcess():
     savewithPatient(file_path, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
     print("Finished saving files")
 
+
+#  Only for new ivim files that were later obtained
+def runProcess2():
+    
+    #-----Create Files from Masks and Original MRI slices
+    filepath = ['newIVIM', 'ROIS', '']
+    filenames = ['new_ivim_mmasks/mask_diff_','new_ivim_mmasks/mask_perf_','new_ivim_mmasks/mask_f_']
+    diff_dict, perf_dict, f_dict = createFiles2(filepath,filenames)
+    print ("created Files")
+    print (len(diff_dict))
+
+    #saved Masked Files
+    name = ['diffmask', 'perfmask', 'fmask']
+    saveDicts([diff_dict, perf_dict, f_dict], name)
+    print ("saved masked Files")
+
+    #Pad Files to 64x64 - if running first time
+    alldicts = [diff_dict, perf_dict, f_dict]
+    name = ['diffpad', 'perfpad', 'fpad']
+    alldicts = padFiles(alldicts, name)
+    print ("padded files")
+
+    #Save Padded and Files
+    saveDicts(alldicts, name)
+    print ("saved padded Files")
+    
+    #load padded images to a list, useful for when files already exist;
+    file_path = 'new_ivim_mmasks'
+    name = ['diffpad', 'perfpad', 'fpad']
+    ldiff_files, lperf_files, lf_files = loadexisting2(file_path, name)
+    print ("Number of files extracted (should be 40) from loading padded masks: %d"%(len(ldiff_files)))
+    
+    #Use Max-Min normalization:
+    ldiff_files, lperf_files, lf_files = MaxMinNorm(ldiff_files, lperf_files, lf_files)
+
+    #save the normalized maps
+    print ("normalizing Maps using Max-Min")
+    file_path = 'newIvim_maxmin'
+    name = ['mm_diffpad', 'mm_perfpad', 'mm_fpad']
+    savewithPatient(file_path, name, [ldiff_files, lperf_files, lf_files])
+    print("Finished saving files")
+
 '''
 #load files, names of the padded files:
 name = ['apad', 'bpad', 'dpad', 'diffpad', 'perfpad', 'fpad']
@@ -446,7 +644,7 @@ filepath = 'maxmin'
 name = ['mm_apad', 'mm_bpad', 'mm_dpad', 'mm_diffpad', 'mm_perfpad', 'mm_fpad']
 savewithPatient(filepath, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
 '''
+createFiles_not_masked(['ctrw','ivim', 'ROIS', ''])
 
 
-
-runProcess()
+#runProcess2()

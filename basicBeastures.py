@@ -75,7 +75,7 @@ def getFiles2(file_path,name):
 # @freq is the probabilty at each bin
 # @val is the bin center
 def mean_(val, freq):
-    return np.average(val, weights = freq)
+    return np.sum(val * freq)
 
 def median_(val, freq):
     ord = np.argsort(val)
@@ -169,17 +169,19 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
     lperfhist = []
     lfhist = []
 
-    plt.figure()
-    amap = fmaps[5].reshape(64,64)
-    imgplot = plt.imshow(amap)
-    imgplot.set_cmap('nipy_spectral')
+    #plt.figure()
+    #amap = fmaps[5].reshape(64,64)
+    #imgplot = plt.imshow(amap)
+    #imgplot.set_cmap('nipy_spectral')
 
+    
+
+    """
     skew_kurt = viz.line(
     Y=np.column_stack((np.zeros((1)),np.zeros((1)))),
     X=np.column_stack((np.zeros((1)),np.zeros((1)))),
     opts=dict(xlabel='sample',ylabel='Value',title='Skew and Kurtosis values {}'.format(name[-1])))
 
-    """
     percentiles = viz.line(
     Y=np.column_stack((np.zeros((1)),np.zeros((1)),np.zeros((1)),np.zeros((1)))),
     X=np.column_stack((np.zeros((1)),np.zeros((1)),np.zeros((1)),np.zeros((1)))),
@@ -217,23 +219,23 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
         ahist[i][3], idx = percentile(thist, cs.tolist(), 0.75)
 
         #calculate bin centers:
-        bc = thist[1] + (thist[1][1] - thist[1][0])/2
+        bc = np.diff(thist[1])
 
         
         #calculate median
         #amid = ahist[i][2]
         
         #calculate mean
-        amean = mean_(bc[:-1],thist[0])
+        amean = mean_(bc,thist[0])
 
         #calculate variance
-        avar = var_(bc[:-1],thist[0])
+        avar = var_(bc,thist[0])
 
         #calculate kurtosis
-        akurt = kurt_(temp,bc[:-1],thist[0])
+        akurt = kurt_(temp,bc,thist[0])
         
         #calculate skew
-        askew = skew_(temp,bc[:-1],thist[0])
+        askew = skew_(temp,bc,thist[0])
 
         #calculate quartile 
         aquartile = ahist[i][3]-ahist[i][1]
@@ -256,22 +258,23 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
         bhist[i][3], idx = percentile(thist, cs.tolist(), 0.75)
 
         #calculate bin centers:
-        bc = thist[1] + (thist[1][1] - thist[1][0])/2
+        #bc = thist[1] + (thist[1][1] - thist[1][0])/2
+        bc = np.diff(thist[1])
         
         #calculate median
        # bmid = bhist[i][2]
         
         #calculate mean
-        bmean = mean_(bc[:-1],thist[0])
+        bmean = mean_(bc,thist[0])
 
         #calculate variance
-        bvar = var_(bc[:-1],thist[0])
+        bvar = var_(bc,thist[0])
 
         #calculate kurtosis
-        bkurt = kurt_(temp,bc[:-1],thist[0])
+        bkurt = kurt_(temp,bc,thist[0])
         
         #calculate skew
-        bskew = skew_(temp, bc[:-1],thist[0])
+        bskew = skew_(temp, bc,thist[0])
 
         #calculate quartile
         bquartile = bhist[i][3]-bhist[i][1]
@@ -296,22 +299,22 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
 
      
         #calculate bin centers:
-        bc = thist[1] + (thist[1][1] - thist[1][0])/2
+        bc = np.diff(thist[1])
                
         #calculate median
         #dmid = dhist[i][2]
         
         #calculate mean
-        dmean = mean_(bc[:-1],thist[0])
+        dmean = mean_(bc,thist[0])
 
         #calculate variance
-        dvar = var_(bc[:-1],thist[0])
+        dvar = var_(bc,thist[0])
 
         #calculate kurtosis
-        dkurt = kurt_(temp, bc[:-1],thist[0])
+        dkurt = kurt_(temp, bc,thist[0])
         
         #calculate skew
-        dskew = skew_(temp, bc[:-1],thist[0])
+        dskew = skew_(temp, bc,thist[0])
 
         #calculate quartile
         dquartile = dhist[i][3]-dhist[i][1]
@@ -338,23 +341,23 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
      
 
         #calculate bin centers:
-        bc = thist[1] + (thist[1][1] - thist[1][0])/2
+        bc = np.diff(thist[1])
 
        
         #calculate median
         #diffmid = diffhist[i][2]
         
         #calculate mean
-        diffmean = mean_(bc[:-1],thist[0])
+        diffmean = mean_(bc,thist[0])
 
         #calculate variance
-        diffvar = var_(bc[:-1],thist[0])
+        diffvar = var_(bc,thist[0])
 
         #calculate kurtosis
-        diffkurt = kurt_(temp, bc[:-1],thist[0])
+        diffkurt = kurt_(temp, bc,thist[0])
         
         #calculate skew
-        diffskew = skew_(temp, bc[:-1],thist[0])
+        diffskew = skew_(temp, bc,thist[0])
 
         #calculate quartile
         diffquartile = diffhist[i][3]-diffhist[i][1]
@@ -380,7 +383,7 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
    
 
         #calculate bin centers:
-        bc = thist[1] + (thist[1][1] - thist[1][0])/2
+        bc = np.diff(thist[1])
 
   
         
@@ -388,16 +391,16 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
         #perfmid = perfhist[i][2]
         
         #calculate mean
-        perfmean = mean_(bc[:-1],thist[0])
+        perfmean = mean_(bc,thist[0])
 
         #calculate variance
-        perfvar = var_(bc[:-1],thist[0])
+        perfvar = var_(bc,thist[0])
 
         #calculate kurtosis
-        perfkurt = kurt_(temp, bc[:-1],thist[0])
+        perfkurt = kurt_(temp, bc,thist[0])
         
         #calculate skew
-        perfskew = skew_(temp, bc[:-1],thist[0])
+        perfskew = skew_(temp, bc,thist[0])
 
         #calculate quartile
         perfquartile = perfhist[i][3]-perfhist[i][1]
@@ -407,8 +410,6 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
         perfhist[i][6] = perfvar
         perfhist[i][7] = perfkurt
         perfhist[i][8] = perfskew
-
-
 
         #First generate histogram for f_map:
         thist = np.histogram(g.ravel()[np.flatnonzero(g)],bins=bin_width[5],range=(fmin,fmax),density=True)
@@ -424,22 +425,22 @@ def getHistFeatures(name, amaps, bmaps, dmaps, diffmaps, perfmaps, fmaps, bin_wi
  
 
         #calculate bin centers:
-        bc = thist[1] + (thist[1][1] - thist[1][0])/2
+        bc = np.diff(thist[1])
 
         #calculate median
         #fmid = fhist[i][2]
         
         #calculate mean
-        fmean = mean_(bc[:-1],thist[0])
+        fmean = mean_(bc,thist[0])
 
         #calculate variance
-        fvar = var_(bc[:-1],thist[0])
+        fvar = var_(bc,thist[0])
 
         #calculate kurtosis
-        fkurt = kurt_(temp, bc[:-1],thist[0])
+        fkurt = kurt_(temp, bc,thist[0])
         
         #calculate skew
-        fskew = skew_(temp, bc[:-1],thist[0])
+        fskew = skew_(temp, bc,thist[0])
 
         #calculate quartile
         fquartile = fhist[i][3]-fhist[i][1]
@@ -516,8 +517,6 @@ def saveFeaturesIVIM(file_path, name, afiles, bfiles, dfiles, ahist, bhist, dhis
         af = file_path + '/%s_%s_%d'%(name[2],patientname,i)
         np.save(af,[dfiles[i][0], label, patientname, dhist[i],ldhist[i]])
 
-viz = Visdom()
-
 def getMaps(allfiles):
 
     allmaps = []
@@ -562,8 +561,8 @@ def runScript():
     #Generate and Save Features of Orignal Maps *********************************************** #
 
 
-    file_path = 'maxmin'
-    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    file_path = 'newIvim_maxmin'
+    ofile_path = ['ctrw_newIvim_maxminFeat_80', 'new_maxminFeatIvim_80']
     name = ['mm_apad','mm_bpad','mm_dpad','mm_diffpad', 'mm_perfpad', 'mm_fpad']
     oname = ['mm_apad_feat','mm_bpad_feat','mm_dpad_feat', 'mm_diffpad_feat', 'mm_perfpad_feat', 'mm_fpad_feat']
 
@@ -571,9 +570,9 @@ def runScript():
 
     #Generate and Save Features of Augmented Orignal Maps (non-cropped) *********************************************** #
 
-    file_path = 'maxminAug'
+    file_path = 'newIvim_maxminAug'
     name = ['ogaug_alpha_','ogaug_beta_','ogaug_ddc_', 'ogaug_diff', 'ogaug_perf', 'ogaug_f']
-    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    ofile_path = ['ctrw_newIvim_maxminFeat_80', 'new_maxminFeatIvim_80']
     oname = ['ogaug_alpha_feat','ogaug_beta_feat','ogaug_ddc_feat', 'ogaug_diff_feat', 'ogaug_perf_feat', 'ogaug_f_feat']
 
     getFeatures(True, binwidth,file_path, name, ofile_path, oname)
@@ -581,27 +580,27 @@ def runScript():
 
     #Generate and Save Features of Augmented Crop Images 1 ********************************************** #
 
-    file_path = 'maxminAug'
+    file_path = 'newIvim_maxminAug'
     name = ['cropaug1_alpha_','cropaug1_beta_','cropaug1_ddc_', 'cropaug1_diff', 'cropaug1_perf', 'cropaug1_f']
-    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    ofile_path = ['ctrw_newIvim_maxminFeat_80', 'new_maxminFeatIvim_80']
     oname = ['cropaug1_alpha_feat','cropaug1_beta_feat','cropaug1_ddc_feat', 'cropaug1_diff_feat', 'cropaug1_perf_feat', 'cropaug1_f_feat']
     getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
 
 
     #Generate and Save Features of Augmented Crop Images 2
-    file_path = 'maxminAug'
+    file_path = 'newIvim_maxminAug'
     name = ['cropaug2_alpha_','cropaug2_beta_','cropaug2_ddc_', 'cropaug2_diff', 'cropaug2_perf', 'cropaug2_f']
-    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    ofile_path = ['ctrw_newIvim_maxminFeat_80', 'new_maxminFeatIvim_80']
     oname = ['cropaug2_alpha_feat','cropaug2_beta_feat','cropaug2_ddc_feat', 'cropaug2_diff_feat', 'cropaug2_perf_feat', 'cropaug2_f_feat']
     getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
 
     #Generate and Save Features of Augmented Crop Images 3
 
-    file_path = 'maxminAug'
+    file_path = 'newIvim_maxminAug'
     name = ['cropaug3_alpha_','cropaug3_beta_','cropaug3_ddc_', 'cropaug3_diff', 'cropaug3_perf', 'cropaug3_f']
-    ofile_path = ['maxminFeat', 'maxminFeatIvim']
+    ofile_path = ['ctrw_newIvim_maxminFeat_80', 'new_maxminFeatIvim_80']
     oname = ['cropaug3_alpha_feat','cropaug3_beta_feat','cropaug3_ddc_feat', 'cropaug3_diff_feat', 'cropaug3_perf_feat', 'cropaug3_f_feat']
     getFeatures(True, binwidth,file_path, name, ofile_path, oname)
 
@@ -611,4 +610,6 @@ def runScript():
 values that form the histogram were found to the left (13). 
 The quartile means the difference between ADC25 and ADC75.'''
 
-    
+#viz = Visdom()
+
+runScript()

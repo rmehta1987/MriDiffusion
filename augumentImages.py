@@ -231,9 +231,17 @@ def augImages(filepath, fnames, onames, ofilepath):
 
 
 
-""" name = ['mm_apad', 'mm_bpad', 'mm_dpad']
+name = ['mm_apad', 'mm_bpad', 'mm_dpad']
 filepath = 'maxmin'
 onames = ['alpha', 'beta', 'ddc']
-opath = 'maxminAug'
+opath = 'newIvim_maxminAug'
 
-augImages(filepath,name,onames,opath) """
+augImages(filepath,name,onames,opath) 
+
+'''
+name = ['mm_diffpad', 'mm_perfpad', 'mm_fpad']
+filepath = 'newIvim_maxmin'
+onames = ['diff', 'perf', 'f']
+opath = 'newIvim_maxminAug'
+
+augImages(filepath,name,onames,opath) '''
