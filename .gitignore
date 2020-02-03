@@ -37,3 +37,5 @@ trainingloss.png
 *.pptx
 *.png
 *.pdf
+ROC_Comparison_Classifiers
+Resampled_learn.py
