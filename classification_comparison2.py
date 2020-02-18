@@ -63,7 +63,7 @@ r'$D^{perf}_{10}$', r'$D^{perf}_{Q1}$', r'$D^{perf}_{median}$', r'$D^{perf}_{Q3}
 r'$F_{10}$', r'$F_{Q1}$', r'$F_{median}$', r'$F_{Q3}$', r'$F_{IQR}$', r'$F_{mean}$', r'$F_{variance}$', r'$F_{kurtosis}$', r'$F_{skewness}$']       
 
 # Starts visdom, the visualizer for graphs
-viz = Visdom()
+# viz = Visdom()
 
 # Initialize Classifier hyperparameters
 classifiers = [
@@ -142,7 +142,7 @@ def createFeatMat3(afiles, bfiles, dfiles, diff_files, perf_files, f_files):
     return xtrain, ytrain
 
 
-def runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, allnames):
+def runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, allnames, classifer_name):
 
     cv_grid = GridSearchCV(grid_classifier, tuned_parameters, cv=10, scoring='roc_auc', n_jobs=-1, verbose=True)
     cv_grid.fit(xtrain, ytrain.ravel())
@@ -157,8 +157,8 @@ def runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, allnames):
     b_estimator.fit(xtrain,ytrain.ravel())
 
     b_feats = b_estimator.feature_importances_
-    np.save("bestfeats", [b_feats, allnames])
-    np.save("bestparams", cv_grid.best_params_)
+    np.save("bestfeats_{}".format(classifer_name), [b_feats, allnames])
+    np.save("bestparams_{}".format(classifer_name), cv_grid.best_params_)
     viz.bar(X=b_feats,opts=dict(stacked=False,rownames=allnames))
 
     return b_estimator, cv_grid.best_params_
@@ -188,7 +188,7 @@ def oneModel(themodel, xtrain, ytrain):
         ypred = themodel.predict(txtest)
         fonescore.append(f1_score(tytest.ravel(),ypred))
         accscore.append(accuracy_score(tytest.ravel(),ypred))
-        #b_feats.append(themodel.feature_importances_)
+        
 
     return tprs, aucs, mean_fpr, accscore, fonescore, themodel, b_feats
     
@@ -773,7 +773,7 @@ def runScript():
 
     atitle = "Original Data"
     accscore, fonescore, std, importances, tprs, aucs = runClassifiers(xtrain, ytrain)
-    visualizeResults(accscore, fonescore, std, importances, fnames, atitle)
+    #visualizeResults(accscore, fonescore, std, importances, fnames, atitle)
 
 
     print
@@ -822,7 +822,7 @@ def runScript():
     '''
 
     
-
+visualizeResults
     ##### TEST ON IVIM FEATURES ######
 
     
@@ -860,7 +860,7 @@ def runScript():
     
     atitle = "Org and IVIM Maps"
     accscore, fonescore, std, importances, tprs, aucs = runClassifiers(xtrain, ytrain)
-    visualizeResults(accscore, fonescore, std, importances, f2names, atitle)
+    #visualizeResults(accscore, fonescore, std, importances, f2names, atitle)
 
     '''
     ##################################################Test Individual IVIM MAPS##################################################
@@ -899,8 +899,8 @@ def runScript():
     # "max_depth": [3,5,8],"max_features":["log2", "sqrt"],"criterion": ["friedman_mse"],"subsample": [0.5, 0.618, 0.8, 0.85, 1.0], "n_estimators":[100,250,500]}
 
     #grid_classifier = GradientBoostingClassifier()
-
-    #the_estimator, after_tuned = runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, f2names):
+    #classifier_name = names[-1]
+    #the_estimator, after_tuned = runGridSearch(tuned_parameters,grid_classifier, xtrain, ytrain, f2names, classifer_name):
 
     #*******************
     '''
@@ -910,7 +910,7 @@ def runScript():
 
     model = GradientBoostingClassifier(**after_tuned)
     tprs, aucs, mean_fpr, accscore, fonescore, model, b_feats = oneModel(model, xtrain, ytrain)
-    visRocCurve(tprs, aucs, mean_fpr, accscore, fonescore, model, f2names, b_feats)
+    #visRocCurve(tprs, aucs, mean_fpr, accscore, fonescore, model, f2names, b_feats)
     '''
     modulename = 'boruta' 
     if modulename not in sys.modules:
@@ -966,7 +966,7 @@ def runScript2():
     ytrain = np.load("ytrain_full_ivim_ctrw.npy")
 
     accscore, fonescore, std, importances = runClassifiers2(xtrain, ytrain)
-    visualizeResults(accscore, fonescore, std, importances, f2names, "All Data")
+    #visualizeResults(accscore, fonescore, std, importances, f2names, "All Data")
 
 
 
@@ -1010,7 +1010,7 @@ def runScript4():
     tprs_upper = tprs_mean + 2*tprs_std/(np.sqrt(50))
     tprs_lower = tprs_mean - 2*tprs_std/(np.sqrt(50))
     #err_traces, xs, _ = make_errors2(tprs_mean[0], (tprs_lower[0], tprs_upper[0]))
-    make_errors3(tprs_mean, (tprs_lower, tprs_upper),title="ROC Comparison of Classifiers", l_names=c_names)
+    #make_errors3(tprs_mean, (tprs_lower, tprs_upper),title="ROC Comparison of Classifiers", l_names=c_names)
     #layout=dict(title="First Plot", xaxis={'title':'x1'}, yaxis={'title':'x2'})
 
     #viz._send({'data': err_traces, 'layout': layout, 'win': 'mywin'})
@@ -1311,7 +1311,7 @@ def runAllHists(model, model_name):
     tprs_upper = tprs_mean + 2*tprs_std/(np.sqrt(50))
     tprs_lower = tprs_mean - 2*tprs_std/(np.sqrt(50))
 
-    make_errors3(tprs_mean, (tprs_lower, tprs_upper), title="ROC Comparison of Histograms for {} classifer".format(model_name), l_names=hist_names)
+    #make_errors3make_errors3(tprs_mean, (tprs_lower, tprs_upper), title="ROC Comparison of Histograms for {} classifer".format(model_name), l_names=hist_names)
 
     #visualizeHists(hist40, hist60, hist80, hist100, hist120, title)
 
@@ -1358,7 +1358,7 @@ def runMorefeats():
     tprs_upper = tprs_mean + 2*tprs_std/(np.sqrt(50))
     tprs_lower = tprs_mean - 2*tprs_std/(np.sqrt(50))
 
-    make_errors3(tprs_mean, (tprs_lower, tprs_upper), title="ROC Comparison of Number of Features", l_names=feat_names)
+    #make_errors3(tprs_mean, (tprs_lower, tprs_upper), title="ROC Comparison of Number of Features", l_names=feat_names)
 
 
 def runSpecificFeats():
@@ -1367,13 +1367,6 @@ def runSpecificFeats():
     num_samples=10000
     alltprs=[]
 
-    '''temp = np.array([False, False, False, False,  True,  True, False, False, False,
-       False, False,  True,  True,  True, False, False,  True,  True,
-        True, False,  True,  True, False, False, False, False, False,
-        True,  True, False,  True, False, False, False,  True, False,
-       False, False,  True,  True,  True,  True,  True,  True, False,
-        True,  True, False,  True, False, False, False,  True, False])
-    '''
     # top 8 features
     temp2 = np.array([False, False, False, False, False, False, False, False, False,
        False, False,  True, False, False, False, False, False,  True,
@@ -1655,7 +1648,7 @@ def runTemp():
 
 #after_tuned = {'min_samples_leaf': 0.15714285714285714, 'learning_rate': 0.2, 'loss': 'deviance', 'max_features': 'sqrt', 'subsample': 0.8, 'max_depth': 8, 'min_samples_split': 0.1, 
 #'criterion': 'friedman_mse', 'n_estimators': 100}
-#model = GradientBoostingClassifier(**after_tuned)
+#model = GradientBoostingClassifier(**after_tuned)s
 
 #for i in list(range(1,6)):
 #    runAllHists(classifiers[i], c_names[i])

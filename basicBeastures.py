@@ -612,4 +612,4 @@ The quartile means the difference between ADC25 and ADC75.'''
 
 #viz = Visdom()
 
-runScript()
+#runScript()
