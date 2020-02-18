@@ -89,9 +89,7 @@ def createFiles_not_masked(filepath):
                 allMasks = [mask_alpha, mask_beta, mask_ddc, mask_idiff, mask_iperf, mask_if]
                 finalname = "%s_%d"%(patientname,j)
                 adict['%s_%s_%d'%(maps,patientname,j)]=[allMaps, allMasks, tempROI, finalname]
-                
-                
-                #patientset.add(patientname)
+            
     np.save('allMaps', adict)
     return adict
 
@@ -383,42 +381,6 @@ def MaxMinNorm(afiles, bfiles, dfiles):
 
     return afiles, bfiles, dfiles
 
-#Currently Does not work, most likely not needed
-def combatFiles(afiles, bfiles, dfiles):
-    '''Use combat normalization to normalize instead of quantile sample'''
-    '''Need to create a datafram that matches the Combat Script input style
-        
-    data : a pandas data frame or numpy array
-    neuroimaging data to correct with shape = (samples, features)
-    e.g. cortical thickness measurements, image voxels, etc
-
-    covars : a pandas data frame w/ shape = (samples, features)
-        demographic/phenotypic/behavioral/batch data 
-        
-    batch_col : string
-        - batch effect variable
-        - e.g. scan site
-    
-    Need to create a normalization for each parameter map
-    
-    --- Need to figure out how to normalize on Volume and not batch
-    
-    '''
-
-    #First put each parameter map into to panda dataframe, with columns as 
-    #patient_name and rows as the features
-
-    #numpy array for parameters and the voxel values
-    amaps = np.array([temp.reshape(-1) for temp in np.array(afiles)[:,0]])
-    bmaps = np.array([temp.reshape(-1) for temp in np.array(bfiles)[:,0]])
-    dmaps = np.array([temp.reshape(-1) for temp in np.array(dfiles)[:,0]]) 
-    batchname = [temp for temp in np.array(afiles)[:,2]]
-    batchFrame = pd.DataFrame({'batch': batchname})
-
-    tamaps = neuroCombat(amaps,batchFrame, 'batch')
-    tbmaps = neuroCombat(bmaps,batchFrame, 'batch')
-    tdmaps = neuroCombat(dmaps,batchFrame, 'batch')
-    
 
 def zscoreNorm(afiles, bfiles, dfiles):
     ''' Normalize the respective maps by the z-score:  [v_i - mean(V)] / std(V) where v_i is voxel and V are all the voxels'''
@@ -627,24 +589,3 @@ def runProcess2():
     savewithPatient(file_path, name, [ldiff_files, lperf_files, lf_files])
     print("Finished saving files")
 
-'''
-#load files, names of the padded files:
-name = ['apad', 'bpad', 'dpad', 'diffpad', 'perfpad', 'fpad']
-#where are files located:
-filepath = 'mmasks'
-
-#load files:
-lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files = loadexisting(filepath, name) 
-#normalize the images using min-max
-lafiles, lbfiles, ldfiles = MaxMinNorm(lafiles, lbfiles, ldfiles)
-ldiff_files, lperf_files, lf_files = MaxMinNorm(ldiff_files, lperf_files, lf_files)
-
-#save the normalized files, create a name and set folder path, folder must already be created
-filepath = 'maxmin'
-name = ['mm_apad', 'mm_bpad', 'mm_dpad', 'mm_diffpad', 'mm_perfpad', 'mm_fpad']
-savewithPatient(filepath, name, [lafiles, lbfiles, ldfiles, ldiff_files, lperf_files, lf_files])
-'''
-createFiles_not_masked(['ctrw','ivim', 'ROIS', ''])
-
-
-#runProcess2()
